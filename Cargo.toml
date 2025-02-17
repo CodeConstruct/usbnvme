@@ -1,0 +1,90 @@
+[package]
+name = "usbnvme"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+    "mctp-usb-embassy",
+]
+
+[workspace.dependencies]
+embassy-sync = { version = "0.5" }
+embassy-usb = { version = "0.4" }
+embassy-usb-driver = { version = "0.1" }
+embassy-futures = { version = "0.1" }
+embassy-time = "0.4"
+defmt = "0.3"
+defmt-rtt = "0.4"
+heapless = "0.8"
+embedded-hal-async = "1"
+cortex-m = { version = "0.7.6", features = ["inline-asm", "critical-section-single-core"] }
+# set-vtor and set-sp necessary when using xspiloader
+cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+embassy-executor = { version = "0.7", features = ["executor-thread"] }
+
+mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", tag = "dev/mctp-stack-v0.2.0", default-features = false }
+mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", tag = "dev/mctp-stack-v0.2.0", default-features = false }
+
+[dependencies]
+embassy-executor = { workspace = true, features = [
+    "arch-cortex-m", "executor-interrupt",
+    "task-arena-size-8192",
+    "defmt"] }
+embassy-time = { workspace = true, features = ["tick-hz-32_768"] }
+embassy-sync = { workspace = true }
+embassy-usb = { workspace = true }
+embassy-futures = { workspace = true }
+embassy-stm32 = { version = "0.2", features = ["time-driver-any", "stm32h7s3l8"] }
+embedded-hal-async = { workspace = true }
+heapless = { workspace = true }
+static_cell = "2.1"
+
+mctp-usb-embassy = { path = "mctp-usb-embassy" }
+mctp = { workspace = true }
+mctp-estack = { workspace = true }
+
+defmt-rtt = { workspace = true, optional = true }
+defmt = { workspace = true, optional = true }
+
+# log as well as defmt. TODO
+log = "0.4"
+rtt-logger = "0.2"
+rtt-target = "0.3"
+
+cortex-m = { workspace = true }
+cortex-m-rt = { workspace = true }
+panic-probe = { workspace = true }
+
+[features]
+default = ["defmt"]
+defmt = ["embassy-usb/defmt", "embassy-stm32/defmt",
+    "embassy-time/defmt-timestamp-uptime", "dep:defmt", "dep:defmt-rtt", "mctp-usb-embassy/defmt",
+    "mctp/defmt", "mctp-estack/defmt" ]
+log = ["embassy-usb/log", "embassy-stm32/log"]
+
+[patch.'https://github.com/CodeConstruct/mctp-rs/']
+# mctp-estack = { path = "../mctp-rs/mctp-estack" }
+# mctp = { path = "../mctp-rs/mctp" }
+
+[patch.crates-io]
+# mctp-estack currently requires unreleased git embassy-sync for https://github.com/embassy-rs/embassy/pull/3829
+embassy-sync = { git = "https://github.com/embassy-rs/embassy/", rev = "7d66f1ca192bb5de83626cdb91f82c1caf265d73" }
+
+[profile.release]
+debug = 2
+# 3 is larger
+# z is slightly smaller, s is faster.
+opt-level = "z"
+lto = 'fat'
+codegen-units = 1
+incremental = false
+
+[profile.dev]
+debug = 2
+opt-level = "z"
+lto = 'fat'
+debug-assertions = true
+# 4kB code size increase
+overflow-checks = true

@@ -1,0 +1,16 @@
+[package]
+name = "mctp-usb-embassy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+embassy-usb = { workspace = true }
+embassy-usb-driver = { workspace = true }
+defmt = { workspace = true }
+mctp = { workspace = true }
+mctp-estack = { workspace = true }
+heapless = { workspace = true }
+
+[features]
+defmt = ["mctp/defmt"]
+log = []

@@ -1,0 +1,19 @@
+[target.thumbv7em-none-eabihf]
+# --no-location to make logs more readable
+#runner = 'probe-rs run --chip STM32H7S3L8 --probe 0483:3754'
+runner = 'probe-rs run --chip STM32H7S3L8 --probe 0483:3754 --no-location'
+
+[build]
+target = "thumbv7em-none-eabihf"
+
+[env]
+DEFMT_LOG = "info"
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# (..)
+# flip-link is useful to debug stack overflows
+#linker = "flip-link"
+
+[net]
+# SSH urls
+git-fetch-with-cli = true
