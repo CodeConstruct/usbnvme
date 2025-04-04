@@ -6,6 +6,7 @@ edition = "2021"
 [workspace]
 members = [
     "mctp-usb-embassy",
+    "xspiloader",
 ]
 
 [workspace.dependencies]
