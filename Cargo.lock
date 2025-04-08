@@ -1183,6 +1183,7 @@ dependencies = [
  "rtt-logger",
  "rtt-target",
  "static_cell",
+ "uuid",
 ]
 
 [[package]]

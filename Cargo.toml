@@ -57,6 +57,7 @@ rtt-target = "0.3"
 cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }
 panic-probe = { workspace = true }
+uuid = { version = "1.16.0", default-features = false }
 
 [features]
 default = ["defmt"]
