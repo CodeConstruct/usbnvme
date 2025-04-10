@@ -12,9 +12,9 @@ use core::num::Wrapping;
 use static_cell::StaticCell;
 
 use embassy_executor::{Executor, InterruptExecutor, SendSpawner, Spawner};
-use embassy_stm32::{interrupt, bind_interrupts};
+use embassy_stm32::interrupt;
 use embassy_stm32::interrupt::{InterruptExt, Priority};
-use embassy_stm32::{gpio, Config, rng, peripherals};
+use embassy_stm32::{gpio, Config};
 use embassy_time::{Duration, Instant, Timer};
 
 use mctp::Eid;
@@ -24,6 +24,7 @@ use mctp_estack::router::{
 };
 
 mod usb;
+mod stmutil;
 
 // TODO
 const USB_MTU: usize = 251;
@@ -38,10 +39,6 @@ const BENCH_LEN: usize = 987;
 const _: () = assert!(BENCH_LEN >= 6);
 
 // use panic_probe as _;
-
-bind_interrupts!(struct Irqs {
-    RNG => rng::InterruptHandler<peripherals::RNG>;
-});
 
 // Simple panic handler without details saves 10+kB.
 #[panic_handler]
@@ -117,9 +114,21 @@ unsafe fn UART5() {
     EXECUTOR_HIGH.on_interrupt()
 }
 
+fn device_uuid() -> uuid::Uuid {
+    // Turn the hardware device ID into 16 uniform random bytes for a UUID
+    let devid = stmutil::device_id();
+    use hmac::Mac;
+    let mut u = hmac::Hmac::<sha2::Sha256>::new_from_slice(&devid).unwrap();
+    u.update(b"deviceid");
+    let u = u.finalize().into_bytes();
+    let u: [u8; 16] = u[..16].try_into().unwrap();
+
+    uuid::Builder::from_random_bytes(u).into_uuid()
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    info!("usbnvme");
+    info!("usbnvme. device {:02x}", device_uuid().as_bytes());
     trace!("usbnvme trace");
 
     // const LOG_LEVEL: log::LevelFilter = log::LevelFilter::Trace;
@@ -170,7 +179,7 @@ fn run(spawner: Spawner, high_spawner: SendSpawner) {
 
     let echo = echo_task(router);
     let timeout = timeout_task(router);
-    let control = control_task(router, p.RNG);
+    let control = control_task(router);
     // let bench = bench_task(router);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
     let usb_recv_loop = usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
@@ -216,19 +225,13 @@ async fn timeout_task(router: &'static mctp_estack::Router<'static>) -> ! {
 }
 
 #[embassy_executor::task]
-async fn control_task(router: &'static Router<'static>, rng: peripherals::RNG) -> ! {
-    // TODO: currently only control task needs RNG, that might change.
-    let mut rng = rng::Rng::new(rng, Irqs);
-    let mut u = [0u8; 16];
-    rng.async_fill_bytes(&mut u).await.expect("RNG");
-    // TODO: should the UUID be persistent for the device?
-    let u = uuid::Builder::from_random_bytes(u).into_uuid();
+async fn control_task(router: &'static Router<'static>) -> ! {
 
     let mut l = router.listener(mctp::MCTP_TYPE_CONTROL).expect("control listener");
     let mut c = mctp_estack::control::MctpControl::new(router);
 
     let _ = c.set_message_types(&[mctp::MCTP_TYPE_CONTROL]);
-    c.set_uuid(&u);
+    c.set_uuid(&device_uuid());
 
     info!("MCTP Control Protocol server listening");
     let mut buf = [0u8; 256];
