@@ -5,15 +5,15 @@ edition = "2024"
 
 [dependencies]
 embassy-executor = { workspace = true, features = [
-    "arch-cortex-m", "defmt",
+    "arch-cortex-m", "log",
     ] }
 embassy-futures = { workspace = true }
 
 # Need unreleased embassy-stm32 for xspi external flash driver
 embassy-stm32 = { git = "https://github.com/embassy-rs/embassy", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525", features = ["stm32h7s3l8", "unstable-pac", "log"] }
 
-defmt-rtt = { workspace = true }
-defmt = { workspace = true }
+log = { workspace = true, features = ["release_max_level_info"] }
+rtt-target = { workspace = true, features = ["log"] }
 
 cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }

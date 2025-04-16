@@ -1,5 +1,5 @@
 #[allow(unused)]
-use defmt::{debug, error, info, trace, warn};
+use log::{debug, error, info, trace, warn};
 
 use embassy_executor::Spawner;
 use embassy_stm32::peripherals::USB_OTG_HS;

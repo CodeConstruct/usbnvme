@@ -5,8 +5,7 @@ use core::cell::RefCell;
 use core::arch::asm;
 
 #[allow(unused)]
-use defmt::{debug, error, info, trace, warn};
-use defmt_rtt as _;
+use log::{debug, error, info, trace, warn};
 
 use embassy_executor::Spawner;
 
@@ -24,6 +23,7 @@ const FLASH_SIZE: usize = 32 * 1024*1024;
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
+    rtt_target::rtt_init_log!();
 
     // RCC config
     // Default 64MHz is adequate
@@ -71,7 +71,7 @@ async fn main(_spawner: Spawner) {
     drop(flash);
 
     info!("booting (reattach probe-rs now) ...");
-    defmt::flush();
+    log::logger().flush();
 
     // Clear rtt-target magic string, so that `probe-rs --rtt-scan-memory`
     // doesn't find the defunct bootloader
@@ -201,7 +201,8 @@ async fn load_elf(source: impl neotron_loader::Source+Copy) -> Result<u32, ()> {
 
             info!("loading 0x{:x} len 0x{:x} from 0x{:x}",
                 ph.p_paddr(), ph.p_memsz(), ph.p_offset());
-            defmt::flush();
+            // Flush in case it faults
+            log::logger().flush();
 
             if !valid_dest(ph.p_paddr(), ph.p_memsz()) {
                 error!("Invalid dest");

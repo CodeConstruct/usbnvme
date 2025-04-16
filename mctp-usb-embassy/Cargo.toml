@@ -6,11 +6,12 @@ edition = "2021"
 [dependencies]
 embassy-usb = { workspace = true }
 embassy-usb-driver = { workspace = true }
-defmt = { workspace = true }
+log = { workspace = true, optional = true }
 mctp = { workspace = true }
 mctp-estack = { workspace = true }
 heapless = { workspace = true }
 
 [features]
-defmt = ["mctp/defmt"]
-log = []
+default = ["log"]
+defmt = ["mctp/defmt", "mctp-estack/defmt"]
+log = ["mctp-estack/log", "dep:log"]

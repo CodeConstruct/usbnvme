@@ -1,11 +1,8 @@
 #![no_std]
 #![no_main]
 
-#[cfg(feature = "defmt")]
 #[allow(unused)]
-use defmt::{debug, error, info, trace, warn};
-#[cfg(feature = "defmt")]
-use defmt_rtt as _;
+use log::{debug, error, info, trace, warn};
 
 use core::num::Wrapping;
 
@@ -40,12 +37,14 @@ const _: () = assert!(BENCH_LEN >= 6);
 
 // use panic_probe as _;
 
-// Simple panic handler without details saves 10+kB.
+
+// Simple panic handler
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    error!("panicked. {}", defmt::Display2Format(info));
+    error!("panicked. {}", info);
     loop {}
 }
+
 
 fn config() -> Config {
     use embassy_stm32::rcc::*;
@@ -128,7 +127,8 @@ fn device_uuid() -> uuid::Uuid {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    info!("usbnvme. device {:02x}", device_uuid().as_bytes());
+    rtt_target::rtt_init_log!();
+    info!("usbnvme. device {:02x?}", device_uuid().as_bytes());
     trace!("usbnvme trace");
 
     // const LOG_LEVEL: log::LevelFilter = log::LevelFilter::Trace;
@@ -237,10 +237,10 @@ async fn control_task(router: &'static Router<'static>) -> ! {
     let mut buf = [0u8; 256];
     loop {
         let Ok((msg, resp, _tag, _typ, _ic)) = l.recv(&mut buf).await else {
-            info!("recv err");
+            info!("control recv err");
             continue;
         };
-        info!("recv msg {}", msg.len());
+        info!("control recv msg {}", msg.len());
 
         let r = c.handle_async(msg, resp).await;
 
