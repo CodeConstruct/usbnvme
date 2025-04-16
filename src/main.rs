@@ -106,11 +106,17 @@ impl PortLookup for Routes {
 }
 
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
+static EXECUTOR_MEDIUM: InterruptExecutor = InterruptExecutor::new();
 static EXECUTOR_LOW: StaticCell<Executor> = StaticCell::new();
 
 #[interrupt]
 unsafe fn UART5() {
     EXECUTOR_HIGH.on_interrupt()
+}
+
+#[interrupt]
+unsafe fn UART4() {
+    EXECUTOR_MEDIUM.on_interrupt()
 }
 
 fn device_uuid() -> uuid::Uuid {
@@ -139,14 +145,12 @@ fn main() -> ! {
     // .unwrap();
     // log::info!("logger");
 
-    interrupt::UART5.set_priority(Priority::P6);
-    let high_spawner = EXECUTOR_HIGH.start(interrupt::UART5);
 
     let executor = EXECUTOR_LOW.init(Executor::new());
-    executor.run(|spawner| run(spawner, high_spawner))
+    executor.run(|spawner| run(spawner))
 }
 
-fn run(spawner: Spawner, high_spawner: SendSpawner) {
+fn run(spawner: Spawner) {
     let p = embassy_stm32::init(config());
 
     let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
@@ -180,16 +184,23 @@ fn run(spawner: Spawner, high_spawner: SendSpawner) {
     let echo = echo_task(router);
     let timeout = timeout_task(router);
     let control = control_task(router);
-    // let bench = bench_task(router);
+    let bench = bench_task(router);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
     let usb_recv_loop = usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
 
+    // lower P number is higher priority (more urgent)
+    interrupt::UART5.set_priority(Priority::P6);
+    let high_spawner = EXECUTOR_HIGH.start(interrupt::UART5);
+
+    interrupt::UART4.set_priority(Priority::P7);
+    let medium_spawner = EXECUTOR_MEDIUM.start(interrupt::UART4);
+
     spawner.spawn(blink_task(led)).unwrap();
-    // spawner.spawn(bench).unwrap();
+    spawner.spawn(bench).unwrap();
     spawner.spawn(echo).unwrap();
     spawner.spawn(timeout).unwrap();
     spawner.spawn(usb_recv_loop).unwrap();
-    spawner.spawn(control).unwrap();
+    medium_spawner.spawn(control).unwrap();
     // high priority for usb send
     high_spawner.spawn(usb_send_loop).unwrap();
 }
