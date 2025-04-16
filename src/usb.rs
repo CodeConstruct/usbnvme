@@ -4,7 +4,7 @@ use defmt::{debug, error, info, trace, warn};
 use embassy_executor::Spawner;
 use embassy_stm32::peripherals::USB_OTG_HS;
 use embassy_stm32::usb::{DmPin, DpPin, Driver};
-use embassy_stm32::{bind_interrupts, usb};
+use embassy_stm32::{bind_interrupts, usb, Peri};
 use embassy_usb::Builder;
 use mctp_usb_embassy::{MctpUsbClass, MCTP_USB_MAX_PACKET};
 use static_cell::StaticCell;
@@ -16,9 +16,9 @@ bind_interrupts!(struct Irqs {
 
 pub(crate) fn setup(
     spawner: Spawner,
-    usb: USB_OTG_HS,
-    dp: impl DpPin<USB_OTG_HS>,
-    dm: impl DmPin<USB_OTG_HS>,
+    usb: Peri<'static, USB_OTG_HS>,
+    dp: Peri<'static, impl DpPin<USB_OTG_HS>>,
+    dm: Peri<'static, impl DmPin<USB_OTG_HS>>,
 ) -> MctpUsbClass<'static, Driver<'static, USB_OTG_HS>> {
     let mut config = embassy_usb::Config::new(0x0000, 0x0000);
     config.manufacturer = Some("Code Construct");

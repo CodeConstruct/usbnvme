@@ -31,7 +31,6 @@ mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", tag = "dev/mct
 [dependencies]
 embassy-executor = { workspace = true, features = [
     "arch-cortex-m", "executor-interrupt",
-    "task-arena-size-8192",
     "defmt"] }
 embassy-time = { workspace = true, features = ["tick-hz-32_768"] }
 embassy-sync = { workspace = true }
@@ -72,7 +71,16 @@ log = ["embassy-usb/log", "embassy-stm32/log"]
 
 [patch.crates-io]
 # mctp-estack currently requires unreleased git embassy-sync for https://github.com/embassy-rs/embassy/pull/3829
-embassy-sync = { git = "https://github.com/embassy-rs/embassy/", rev = "7d66f1ca192bb5de83626cdb91f82c1caf265d73" }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+
+# https://github.com/embassy-rs/embassy/pull/3765 Display for Hertz in embassy-stm32
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+
+embassy-time = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+embassy-time-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
 
 [profile.release]
 debug = 2
