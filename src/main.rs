@@ -197,9 +197,9 @@ fn run(spawner: Spawner) {
 
     spawner.spawn(blink_task(led)).unwrap();
     spawner.spawn(bench).unwrap();
-    spawner.spawn(echo).unwrap();
-    spawner.spawn(timeout).unwrap();
-    spawner.spawn(usb_recv_loop).unwrap();
+    medium_spawner.spawn(echo).unwrap();
+    medium_spawner.spawn(timeout).unwrap();
+    medium_spawner.spawn(usb_recv_loop).unwrap();
     medium_spawner.spawn(control).unwrap();
     // high priority for usb send
     high_spawner.spawn(usb_send_loop).unwrap();
@@ -284,7 +284,7 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
 
     let mut counter = Wrapping(SEQ_START);
 
-    let mut req = router.req(Eid(20));
+    let mut req = router.req(Eid(90));
     req.tag_noexpire().unwrap();
 
     loop {
