@@ -8,7 +8,7 @@ use core::num::Wrapping;
 
 use static_cell::StaticCell;
 
-use embassy_executor::{Executor, InterruptExecutor, SendSpawner, Spawner};
+use embassy_executor::{Executor, InterruptExecutor, Spawner};
 use embassy_stm32::interrupt;
 use embassy_stm32::interrupt::{InterruptExt, Priority};
 use embassy_stm32::{gpio, Config};
@@ -33,7 +33,7 @@ const BENCH_LEN: usize = 987;
 // const BENCH_LEN: usize = 246;
 // const BENCH_LEN: usize = 493;
 // const BENCH_LEN: usize = 6;
-const _: () = assert!(BENCH_LEN >= 6);
+const _: () = assert!(BENCH_LEN >= 9);
 
 // use panic_probe as _;
 
@@ -205,16 +205,22 @@ fn run(spawner: Spawner) {
     high_spawner.spawn(usb_send_loop).unwrap();
 }
 
+#[allow(unused)]
 #[embassy_executor::task]
 async fn echo_task(router: &'static mctp_estack::Router<'static>) -> ! {
-    // mctp-echo is type 1, pldm
-    let mut l = router.listener(mctp::MCTP_TYPE_PLDM).unwrap();
+    const VENDOR_SUBTYPE_ECHO: [u8; 3] = [0xcc, 0xde, 0xf0];
+    let mut l = router.listener(mctp::MCTP_TYPE_VENDOR_PCIE).unwrap();
     let mut buf = [0u8; 100];
     loop {
         let Ok((msg, mut resp, _tag, typ, _ic)) = l.recv(&mut buf).await else {
             trace!("echo Bad listener recv");
             continue;
         };
+
+        if !msg.starts_with(&VENDOR_SUBTYPE_ECHO) {
+            trace!("echo wrong vendor subtype");
+            continue;
+        }
 
         debug!("echo msg len {}", msg.len());
         if let Err(_e) = resp.send(typ, msg).await {
@@ -262,8 +268,10 @@ async fn control_task(router: &'static Router<'static>) -> ! {
 }
 
 /// A mctp-bench sender.
+#[allow(unused)]
 #[embassy_executor::task]
 async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
+    const VENDOR_SUBTYPE_BENCH: [u8; 3] = [0xcc, 0xde, 0xf1];
     const MAGIC: u16 = 0xbeca;
     const SEQ_START: u32 = u32::MAX - 5;
 
@@ -271,7 +279,8 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
     for (i, b) in buf.iter_mut().enumerate() {
         *b = (i & 0xff) as u8;
     }
-    buf[..2].copy_from_slice(&MAGIC.to_le_bytes());
+    buf[..3].copy_from_slice(&VENDOR_SUBTYPE_BENCH);
+    buf[3..5].copy_from_slice(&MAGIC.to_le_bytes());
 
     let mut counter = Wrapping(SEQ_START);
 
@@ -279,13 +288,13 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
     req.tag_noexpire().unwrap();
 
     loop {
-        buf[2..6].copy_from_slice(&counter.0.to_le_bytes());
+        buf[5..9].copy_from_slice(&counter.0.to_le_bytes());
         // if counter.0 % 30000 == 1 {
         //     info!("b {:02x}", buf);
         // }
         counter += 1;
 
-        let r = req.send(mctp::MCTP_TYPE_PLDM, &buf).await;
+        let r = req.send(mctp::MCTP_TYPE_VENDOR_PCIE, &buf).await;
         if let Err(e) = r {
             trace!("Error! {}", e);
         }
