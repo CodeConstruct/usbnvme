@@ -35,9 +35,6 @@ const BENCH_LEN: usize = 987;
 // const BENCH_LEN: usize = 6;
 const _: () = assert!(BENCH_LEN >= 9);
 
-// use panic_probe as _;
-
-
 // Simple panic handler
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -45,10 +42,23 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
+static EXECUTOR_MEDIUM: InterruptExecutor = InterruptExecutor::new();
+static EXECUTOR_LOW: StaticCell<Executor> = StaticCell::new();
+
+// UART5 and 4 are unused, so their interrupts are taken for the executors.
+#[interrupt]
+unsafe fn UART5() {
+    EXECUTOR_HIGH.on_interrupt()
+}
+
+#[interrupt]
+unsafe fn UART4() {
+    EXECUTOR_MEDIUM.on_interrupt()
+}
 
 fn config() -> Config {
     use embassy_stm32::rcc::*;
-    info!("config");
     let mut config = embassy_stm32::Config::default();
     // 64MHz hsi_clk
     config.rcc.hsi = Some(HSIPrescaler::DIV1);
@@ -90,9 +100,7 @@ fn now() -> u64 {
     Instant::now().as_millis()
 }
 
-struct Routes {
-    // routing table goes here
-}
+struct Routes {}
 
 impl Routes {
     const USB_INDEX: PortId = PortId(0);
@@ -105,22 +113,10 @@ impl PortLookup for Routes {
     }
 }
 
-static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
-static EXECUTOR_MEDIUM: InterruptExecutor = InterruptExecutor::new();
-static EXECUTOR_LOW: StaticCell<Executor> = StaticCell::new();
-
-#[interrupt]
-unsafe fn UART5() {
-    EXECUTOR_HIGH.on_interrupt()
-}
-
-#[interrupt]
-unsafe fn UART4() {
-    EXECUTOR_MEDIUM.on_interrupt()
-}
-
+/// Persistent UUID
+///
+/// This is generated based on the hardware device ID.
 fn device_uuid() -> uuid::Uuid {
-    // Turn the hardware device ID into 16 uniform random bytes for a UUID
     let devid = stmutil::device_id();
     use hmac::Mac;
     let mut u = hmac::Hmac::<sha2::Sha256>::new_from_slice(&devid).unwrap();
@@ -136,15 +132,6 @@ fn main() -> ! {
     rtt_target::rtt_init_log!();
     info!("usbnvme. device {:02x?}", device_uuid().as_bytes());
     trace!("usbnvme trace");
-
-    // const LOG_LEVEL: log::LevelFilter = log::LevelFilter::Trace;
-    // static LOGGER: rtt_logger::RTTLogger = rtt_logger::RTTLogger::new(LOG_LEVEL);
-    // rtt_target::rtt_init_print!();
-    // log::set_logger(&LOGGER)
-    // .map(|()| log::set_max_level(LOG_LEVEL))
-    // .unwrap();
-    // log::info!("logger");
-
 
     let executor = EXECUTOR_LOW.init(Executor::new());
     executor.run(|spawner| run(spawner))
@@ -165,7 +152,7 @@ fn run(spawner: Spawner) {
     static LOOKUP: StaticCell<Routes> = StaticCell::new();
     static ROUTER: StaticCell<Router> = StaticCell::new();
 
-    // USB port for the MCTP routing
+    // USB port for the MCTP router
     let usb_port_storage = USB_PORT_STORAGE.init(PortStorage::new());
     let usb_port = USB_PORT.init(PortBuilder::new(usb_port_storage));
     let (mctp_usb_top, mctp_usb_bottom) = usb_port.build(USB_MTU).unwrap();
@@ -174,6 +161,7 @@ fn run(spawner: Spawner) {
         mctp_usb_top,
     ]);
 
+    // MCTP stack
     let max_mtu = USB_MTU;
     let stack = mctp_estack::Stack::new(Eid(10), max_mtu, now());
     let lookup = LOOKUP.init(Routes {});
@@ -184,9 +172,17 @@ fn run(spawner: Spawner) {
     let echo = echo_task(router);
     let timeout = timeout_task(router);
     let control = control_task(router);
-    let bench = bench_task(router);
+    // let bench = bench_task(router);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
     let usb_recv_loop = usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
+
+    // Highest priority goes to the USB send task, to fill the TX buffer
+    // as quickly as possible once it becomes ready.
+    //
+    // Most other tasks run as medium.
+    //
+    // mctp-bench sender runs as low priority, so that other senders have a chance.
+    // blinking LED is also low priority.
 
     // lower P number is higher priority (more urgent)
     interrupt::UART5.set_priority(Priority::P6);
@@ -196,7 +192,7 @@ fn run(spawner: Spawner) {
     let medium_spawner = EXECUTOR_MEDIUM.start(interrupt::UART4);
 
     spawner.spawn(blink_task(led)).unwrap();
-    spawner.spawn(bench).unwrap();
+    // spawner.spawn(bench).unwrap();
     medium_spawner.spawn(echo).unwrap();
     medium_spawner.spawn(timeout).unwrap();
     medium_spawner.spawn(usb_recv_loop).unwrap();
@@ -289,9 +285,6 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
 
     loop {
         buf[5..9].copy_from_slice(&counter.0.to_le_bytes());
-        // if counter.0 % 30000 == 1 {
-        //     info!("b {:02x}", buf);
-        // }
         counter += 1;
 
         let r = req.send(mctp::MCTP_TYPE_VENDOR_PCIE, &buf).await;
