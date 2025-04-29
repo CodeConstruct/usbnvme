@@ -125,7 +125,7 @@ SECTIONS
        section will have the correct alignment. */
     . = ALIGN(4);
     __erodata = .;
-  } > DTCM
+  } > RAM
 
   /* ## Sections in RAM */
   /* ### .data */
