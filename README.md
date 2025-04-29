@@ -19,10 +19,23 @@ Install `probe-rs` for interactions with the Nucleo board.
 cargo install probe-rs-tools
 ```
 
-or install a binary. A static binary suitable for ast2600 is available on request.
+or install a binary.
 
 Building usbnvme requires a recent Rust, install it with `rustup` (not needed for flashing/debug logs).
 
+### Static cross-compiiled probe-rs
+
+A static probe-rs binary can be cross-compiled for embedded Linux ARM.
+Cross-compiling a current (2025-04-29) probe-rs checkout with the following should work:
+
+```sh
+rustup target add armv7-unknown-linux-musleabihf
+
+CC=clang  cargo build --release --bin probe-rs  \
+    --target armv7-unknown-linux-musleabihf \
+    --config 'patch.crates-io.udev.git="https://github.com/xobs/basic-udev.git"'  \
+    --config strip=true
+```
 ## Board setup
 
 Attach a USB-C cable from the computer running `probe-rs` to `CN5 [STLK]` on the Nucleo -
