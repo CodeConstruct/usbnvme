@@ -172,7 +172,6 @@ fn run(spawner: Spawner) {
     let echo = echo_task(router);
     let timeout = timeout_task(router);
     let control = control_task(router);
-    // let bench = bench_task(router);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
     let usb_recv_loop = usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
 
@@ -192,13 +191,18 @@ fn run(spawner: Spawner) {
     let medium_spawner = EXECUTOR_MEDIUM.start(interrupt::UART4);
 
     spawner.spawn(blink_task(led)).unwrap();
-    // spawner.spawn(bench).unwrap();
     medium_spawner.spawn(echo).unwrap();
     medium_spawner.spawn(timeout).unwrap();
     medium_spawner.spawn(usb_recv_loop).unwrap();
     medium_spawner.spawn(control).unwrap();
     // high priority for usb send
     high_spawner.spawn(usb_send_loop).unwrap();
+
+    #[cfg(feature = "mctp-bench")]
+    {
+        let bench = bench_task(router);
+        spawner.spawn(bench).unwrap();
+    }
 }
 
 #[allow(unused)]
@@ -267,6 +271,7 @@ async fn control_task(router: &'static Router<'static>) -> ! {
 #[allow(unused)]
 #[embassy_executor::task]
 async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
+    debug!("mctp-bench send running");
     const VENDOR_SUBTYPE_BENCH: [u8; 3] = [0xcc, 0xde, 0xf1];
     const MAGIC: u16 = 0xbeca;
     const SEQ_START: u32 = u32::MAX - 5;
