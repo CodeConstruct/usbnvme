@@ -692,6 +692,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 [[package]]
 name = "mctp"
 version = "0.1.0"
+source = "git+http://github.com/CodeConstruct/mctp-rs/?rev=a270229358a801f3de18056da00406416c08dba7#a270229358a801f3de18056da00406416c08dba7"
 dependencies = [
  "defmt 0.3.100",
 ]
@@ -699,6 +700,7 @@ dependencies = [
 [[package]]
 name = "mctp-estack"
 version = "0.1.0"
+source = "git+http://github.com/CodeConstruct/mctp-rs/?rev=a270229358a801f3de18056da00406416c08dba7#a270229358a801f3de18056da00406416c08dba7"
 dependencies = [
  "crc",
  "defmt 0.3.100",

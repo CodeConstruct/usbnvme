@@ -25,8 +25,8 @@ cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
 panic-probe = { version = "1", features = ["print-rtt"] }
 embassy-executor = { version = "0.7", features = ["executor-thread"] }
 
-mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", tag = "dev/mctp-stack-v0.2.0", default-features = false }
-mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", tag = "dev/mctp-stack-v0.2.0", default-features = false, features = ["log"] }
+mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "a270229358a801f3de18056da00406416c08dba7", default-features = false }
+mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "a270229358a801f3de18056da00406416c08dba7", default-features = false, features = ["log"] }
 
 [dependencies]
 embassy-executor = { workspace = true, features = [
@@ -54,9 +54,9 @@ uuid = { version = "1.16.0", default-features = false }
 sha2 = { version = "0.10.8", default-features = false }
 hmac = { version = "0.12.1", default-features = false }
 
-[patch.'https://github.com/CodeConstruct/mctp-rs/']
-mctp-estack = { path = "../mctp-rs/mctp-estack" }
-mctp = { path = "../mctp-rs/mctp" }
+#[patch.'https://github.com/CodeConstruct/mctp-rs/']
+#mctp-estack = { path = "../mctp-rs/mctp-estack" }
+#mctp = { path = "../mctp-rs/mctp" }
 
 [patch.crates-io]
 # mctp-estack currently requires unreleased git embassy-sync for https://github.com/embassy-rs/embassy/pull/3829
