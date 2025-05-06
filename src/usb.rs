@@ -5,7 +5,8 @@ use embassy_executor::Spawner;
 use embassy_stm32::peripherals::USB_OTG_HS;
 use embassy_stm32::usb::{DmPin, DpPin, Driver};
 use embassy_stm32::{bind_interrupts, usb, Peri};
-use embassy_usb::Builder;
+#[allow(unused_imports)]
+use embassy_usb::{Builder, class::cdc_acm};
 use mctp_usb_embassy::{MctpUsbClass, MCTP_USB_MAX_PACKET};
 use static_cell::StaticCell;
 use mctp_estack::router::{PortBottom, Router, PortId};
@@ -14,12 +15,22 @@ bind_interrupts!(struct Irqs {
     OTG_HS => usb::InterruptHandler<USB_OTG_HS>;
 });
 
+#[cfg(feature = "log-usbserial")]
+type Endpoints = (
+    MctpUsbClass<'static, Driver<'static, USB_OTG_HS>>,
+    cdc_acm::CdcAcmClass<'static, Driver<'static, USB_OTG_HS>>,
+);
+#[cfg(not(feature = "log-usbserial"))]
+type Endpoints = (
+    MctpUsbClass<'static, Driver<'static, USB_OTG_HS>>,
+);
+
 pub(crate) fn setup(
     spawner: Spawner,
     usb: Peri<'static, USB_OTG_HS>,
     dp: Peri<'static, impl DpPin<USB_OTG_HS>>,
     dm: Peri<'static, impl DmPin<USB_OTG_HS>>,
-) -> MctpUsbClass<'static, Driver<'static, USB_OTG_HS>> {
+) -> Endpoints {
     let mut config = embassy_usb::Config::new(0x0000, 0x0000);
     config.manufacturer = Some("Code Construct");
     config.product = Some("usbnvme-0.1");
@@ -30,9 +41,10 @@ pub(crate) fn setup(
     // driver_config.vbus_detection = true;
 
     const CONTROL_SZ: usize = 64;
+    const USBSERIAL_SZ: usize = 64;
     // TODO: +1 workaround can be removed once this merges:
     // https://github.com/embassy-rs/embassy/pull/3892
-    const OUT_SZ: usize = MCTP_USB_MAX_PACKET + CONTROL_SZ + 1;
+    const OUT_SZ: usize = MCTP_USB_MAX_PACKET + CONTROL_SZ + USBSERIAL_SZ + 1;
     static EP_OUT_BUF: StaticCell<[u8; OUT_SZ]> = StaticCell::new();
 
     let ep_out_buf = EP_OUT_BUF.init([0; OUT_SZ]);
@@ -64,10 +76,20 @@ pub(crate) fn setup(
 
     let mctp = MctpUsbClass::new(&mut builder);
 
+    #[cfg(feature = "log-usbserial")]
+    let ret = {
+        static STATE: StaticCell<cdc_acm::State> = StaticCell::new();
+        let state = STATE.init(Default::default());
+        let serial = cdc_acm::CdcAcmClass::new(&mut builder, state, 64);
+        (mctp, serial,)
+    };
+    #[cfg(not(feature = "log-usbserial"))]
+    let ret = (mctp,);
+
     let usb = builder.build();
     spawner.spawn(usb_task(usb)).unwrap();
 
-    mctp
+    ret
 }
 
 #[embassy_executor::task]

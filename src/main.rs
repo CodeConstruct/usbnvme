@@ -22,6 +22,7 @@ use mctp_estack::router::{
 
 mod usb;
 mod stmutil;
+mod multilog;
 
 // TODO
 const USB_MTU: usize = 251;
@@ -96,7 +97,7 @@ fn config() -> Config {
     config
 }
 
-fn now() -> u64 {
+pub fn now() -> u64 {
     Instant::now().as_millis()
 }
 
@@ -129,7 +130,7 @@ fn device_uuid() -> uuid::Uuid {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    rtt_target::rtt_init_log!();
+    multilog::init();
     info!("usbnvme. device {:02x?}", device_uuid().as_bytes());
     trace!("usbnvme trace");
 
@@ -143,7 +144,7 @@ fn run(spawner: Spawner) {
     let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
 
     // MCTP over USB class device
-    let mctpusb = usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5);
+    let endpoints = usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5);
 
     static USB_PORT_STORAGE: StaticCell<PortStorage<4>> = StaticCell::new();
     static USB_PORT: StaticCell<PortBuilder> = StaticCell::new();
@@ -166,6 +167,11 @@ fn run(spawner: Spawner) {
     let stack = mctp_estack::Stack::new(Eid(10), max_mtu, now());
     let lookup = LOOKUP.init(Routes {});
     let router = ROUTER.init(Router::new(stack, ports, lookup));
+
+    #[cfg(feature = "log-usbserial")]
+    let (mctpusb, usbserial) = endpoints;
+    #[cfg(not(feature = "log-usbserial"))]
+    let (mctpusb,) = endpoints;
 
     let (usb_sender, usb_receiver) = mctpusb.split();
 
@@ -202,6 +208,12 @@ fn run(spawner: Spawner) {
     {
         let bench = bench_task(router);
         spawner.spawn(bench).unwrap();
+    }
+    #[cfg(feature = "log-usbserial")]
+    {
+        let (sender, _) = usbserial.split();
+        let seriallog = multilog::log_usbserial_task(sender);
+        spawner.spawn(seriallog).unwrap();
     }
 }
 
@@ -302,11 +314,11 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
 #[embassy_executor::task]
 pub(crate) async fn blink_task(mut led: gpio::Output<'static>) {
     loop {
-        info!("high");
+        info!("led high");
         led.set_high();
         Timer::after(Duration::from_millis(2000)).await;
 
-        trace!("low");
+        trace!("led low");
         led.set_low();
         Timer::after(Duration::from_millis(2000)).await;
     }

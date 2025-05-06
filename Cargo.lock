@@ -484,6 +484,7 @@ dependencies = [
  "critical-section",
  "embassy-sync 0.6.2",
  "embassy-usb-driver",
+ "log",
 ]
 
 [[package]]
@@ -1114,6 +1115,8 @@ dependencies = [
  "embassy-sync 0.5.0",
  "embassy-time",
  "embassy-usb",
+ "embassy-usb-driver",
+ "embassy-usb-synopsys-otg",
  "embedded-hal-async",
  "heapless",
  "hmac",
