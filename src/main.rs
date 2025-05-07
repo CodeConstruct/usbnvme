@@ -24,16 +24,9 @@ mod usb;
 mod stmutil;
 mod multilog;
 
-// TODO
 const USB_MTU: usize = 251;
-// const USB_MTU: usize = 5;
-// const USB_MTU: usize = 128-4;
 
 const BENCH_LEN: usize = 987;
-// const BENCH_LEN: usize = 959;
-// const BENCH_LEN: usize = 246;
-// const BENCH_LEN: usize = 493;
-// const BENCH_LEN: usize = 6;
 const _: () = assert!(BENCH_LEN >= 9);
 
 // Simple panic handler
@@ -131,8 +124,9 @@ fn device_uuid() -> uuid::Uuid {
 #[cortex_m_rt::entry]
 fn main() -> ! {
     multilog::init();
-    info!("usbnvme. device {:02x?}", device_uuid().as_bytes());
-    trace!("usbnvme trace");
+    info!("usbnvme. device {}", device_uuid().hyphenated());
+    debug!("debug log");
+    trace!("trace log");
 
     let executor = EXECUTOR_LOW.init(Executor::new());
     executor.run(|spawner| run(spawner))
@@ -280,6 +274,9 @@ async fn control_task(router: &'static Router<'static>) -> ! {
 }
 
 /// A mctp-bench sender.
+///
+/// Use with `mctp-bench` test tool from
+/// https://github.com/CodeConstruct/mctp. Asssumes receiver EID 90.
 #[allow(unused)]
 #[embassy_executor::task]
 async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {

@@ -110,7 +110,7 @@ pub async fn usb_recv_task(
     loop {
         info!("mctp usb waiting");
         usb_receiver.wait_connection().await;
-        info!("mctp usb attached");
+        info!("mctp usb recv attached");
 
         // Inner loop receives packets and provides MCTP handling
         'receiving: loop {
@@ -138,7 +138,7 @@ pub async fn usb_send_task(
     loop {
         info!("mctp usb waiting");
         usb_sender.wait_connection().await;
-        info!("mctp usb attached");
+        info!("mctp usb send attached");
         'sending: loop {
             // Wait for at least one MCTP packet enqueued
             let (pkt, _dest) = mctp_usb_bottom.outbound().await;
