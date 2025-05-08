@@ -26,8 +26,8 @@ cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
 panic-probe = { version = "1", features = ["print-rtt"] }
 embassy-executor = { version = "0.7", features = ["executor-thread"] }
 
-mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "a270229358a801f3de18056da00406416c08dba7", default-features = false }
-mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "a270229358a801f3de18056da00406416c08dba7", default-features = false, features = ["log"] }
+mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "f77acd5e211628ab18373d8b7601bbf32b21c033", default-features = false }
+mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "f77acd5e211628ab18373d8b7601bbf32b21c033", default-features = false, features = ["log"] }
 
 [dependencies]
 embassy-executor = { workspace = true, features = [
