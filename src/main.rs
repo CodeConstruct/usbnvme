@@ -158,7 +158,7 @@ fn run(spawner: Spawner) {
 
     // MCTP stack
     let max_mtu = USB_MTU;
-    let stack = mctp_estack::Stack::new(Eid(10), max_mtu, now());
+    let stack = mctp_estack::Stack::new(Eid(0), max_mtu, now());
     let lookup = LOOKUP.init(Routes {});
     let router = ROUTER.init(Router::new(stack, ports, lookup));
 
