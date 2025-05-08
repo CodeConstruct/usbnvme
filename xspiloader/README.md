@@ -30,3 +30,7 @@ probe-rs download --chip-description-path chip-h7s3-nucleo.yaml --binary-format 
 
 `chip-h7s3-nucleo.yaml` is a modified version of `probe-rs` [`STM32H7RS_Series.yaml`](https://github.com/probe-rs/probe-rs/blob/master/probe-rs/targets/STM32H7RS_Series.yaml),
 with only the nucleo flash algorithm selected, and only `STM32H7R7L8`.
+
+## License
+
+xspiloader is licensed as either MIT or Apache-2.0
