@@ -37,6 +37,13 @@ pub fn init() {
     log::set_max_level(log::LevelFilter::Trace);
 }
 
+/// Configure suitable for reporting a panic.
+pub fn enter_panic() {
+    rtt_target::with_terminal_channel(|t| {
+        t.set_mode(rtt_target::ChannelMode::BlockIfFull);
+    })
+}
+
 #[embassy_executor::task]
 pub async fn log_usbserial_task(mut sender: UsbSerialSender) {
     /// Writes a buffer in cdc sized chunks

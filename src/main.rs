@@ -36,6 +36,7 @@ const _: () = assert!(BENCH_LEN >= 9);
 // Simple panic handler
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
+    multilog::enter_panic();
     error!("panicked. {}", info);
     loop {}
 }
