@@ -39,8 +39,8 @@ async fn main(_spawner: Spawner) {
     // Initialize peripherals
     let p = embassy_stm32::init(config);
 
-    /* Set ITCM/SRAM1 split to 128/64kB, DTCM/SRAM3 to 192/0kB */
-    set_tcm_split(TCMSplit::Tcm128, TCMSplit::Tcm192);
+    /* Set ITCM/SRAM1 split to 128/64kB, DTCM/SRAM3 to 64/128kB */
+    set_tcm_split(TCMSplit::Tcm128, TCMSplit::Tcm64);
 
     let qspi_config = embassy_stm32::xspi::Config {
         fifo_threshold: FIFOThresholdLevel::_4Bytes,
