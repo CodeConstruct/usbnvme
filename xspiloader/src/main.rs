@@ -175,7 +175,7 @@ fn valid_dest(start: u32, length: u32) -> bool {
             return true;
         }
     }
-    return false;
+    false
 }
 
 fn neotron_error<T: core::fmt::Debug>(e: &neotron_loader::Error<T>) -> &'static str {
@@ -195,7 +195,6 @@ async fn load_elf(source: impl neotron_loader::Source+Copy) -> Result<u32, ()> {
 
     let loader = neotron_loader::Loader::new(source).map_err(|e| {
         warn!("ELF loader failed: {}", neotron_error(&e));
-        ()
     })?;
 
     for (idx, ph) in loader.iter_program_headers().enumerate() {
@@ -302,7 +301,7 @@ impl<I: Instance> FlashMemory<I> {
         self.wait_write_finish();
     }
 
-    pub fn read_memory(&mut self, addr: u32, buffer: &mut [u8], use_dma: bool) {
+    pub fn read_memory(&mut self, addr: u32, buffer: &mut [u8]) {
         let transaction = TransferConfig {
             iwidth: XspiWidth::SING,
             adwidth: XspiWidth::SING,
@@ -313,11 +312,7 @@ impl<I: Instance> FlashMemory<I> {
             address: Some(addr),
             ..Default::default()
         };
-        if use_dma {
-            self.xspi.blocking_read(buffer, transaction).unwrap();
-        } else {
-            self.xspi.blocking_read(buffer, transaction).unwrap();
-        }
+        self.xspi.blocking_read(buffer, transaction).unwrap();
     }
 
     fn wait_write_finish(&mut self) {
@@ -365,7 +360,7 @@ impl<I: Instance> neotron_loader::Source for &FlashCell<I> {
             return Err(());
         }
 
-        self.inner.borrow_mut().read_memory(offset, buffer, true);
+        self.inner.borrow_mut().read_memory(offset, buffer);
         Ok(())
     }
 }
