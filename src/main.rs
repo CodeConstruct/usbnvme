@@ -110,9 +110,13 @@ impl PortLookup for Routes {
     fn by_eid(
         &mut self,
         _eid: Eid,
-        _src_port: Option<PortId>,
+        src_port: Option<PortId>,
     ) -> Option<PortId> {
-        // TODO routing table
+        if src_port == Some(Self::USB_INDEX) {
+            // Avoid routing loops
+            return None;
+        }
+        // All packets out USB
         Some(Self::USB_INDEX)
     }
 }
