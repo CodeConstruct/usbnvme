@@ -10,6 +10,7 @@ use log::{debug, error, info, trace, warn};
 
 use core::num::Wrapping;
 
+use heapless::Vec;
 use static_cell::StaticCell;
 
 use embassy_executor::{Executor, InterruptExecutor, Spawner};
@@ -18,8 +19,8 @@ use embassy_stm32::interrupt::{InterruptExt, Priority};
 use embassy_stm32::{gpio, Config};
 use embassy_time::{Duration, Instant, Timer};
 
-use mctp::Eid;
 use mctp::{AsyncListener, AsyncReqChannel, AsyncRespChannel};
+use mctp::{Eid, MsgType};
 use mctp_estack::router::{
     PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
 };
@@ -220,6 +221,11 @@ fn run(spawner: Spawner) {
     // high priority for usb send
     high_spawner.spawn(usb_send_loop).unwrap();
 
+    #[cfg(feature = "nvme-mi")]
+    {
+        let nvmemi = nvme_mi_task(router);
+        medium_spawner.spawn(nvmemi).unwrap();
+    }
     #[cfg(feature = "mctp-bench")]
     {
         let bench = bench_task(router);
@@ -276,7 +282,12 @@ async fn control_task(router: &'static Router<'static>) -> ! {
         .expect("control listener");
     let mut c = mctp_estack::control::MctpControl::new(router);
 
-    let _ = c.set_message_types(&[mctp::MCTP_TYPE_CONTROL]);
+    let mut types = Vec::<MsgType, 4>::new();
+    types.push(mctp::MCTP_TYPE_CONTROL).unwrap();
+    #[cfg(feature = "nvme-mi")]
+    types.push(mctp::MCTP_TYPE_NVME).unwrap();
+
+    c.set_message_types(&types).unwrap();
     c.set_uuid(&device_uuid());
 
     info!("MCTP Control Protocol server listening");
@@ -293,6 +304,45 @@ async fn control_task(router: &'static Router<'static>) -> ! {
         if let Err(e) = r {
             warn!("control handler failure: {}", e);
         }
+    }
+}
+
+#[cfg(feature = "nvme-mi")]
+#[embassy_executor::task]
+async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
+    use nvme_mi_dev::nvme::*;
+    let mut l = router
+        .listener(mctp::MCTP_TYPE_NVME)
+        .expect("NVME-MI listener");
+
+    let mut subsys = Subsystem::new(SubsystemInfo::environment());
+    let ppid = subsys.add_port(PortType::PCIe(PCIePort::new())).unwrap();
+    let ctrlid0 = subsys.add_controller(ppid).unwrap();
+    let _ctrlid1 = subsys.add_controller(ppid).unwrap();
+
+    let size_blocks = 10_000_000_000_000_u64.div_ceil(512);
+    let nsid = subsys.add_namespace(size_blocks).unwrap();
+    subsys
+        .controller_mut(ctrlid0)
+        .attach_namespace(nsid)
+        .unwrap();
+
+    let twpid = subsys
+        .add_port(PortType::TwoWire(TwoWirePort::new()))
+        .unwrap();
+    let mut mep = ManagementEndpoint::new(twpid);
+
+    debug!("NVMe-MI endpoint listening");
+
+    let mut buf = [0u8; mctp_estack::config::MAX_PAYLOAD];
+    loop {
+        let Ok((_typ, ic, msg, resp)) = l.recv(&mut buf).await else {
+            debug!("recv() failed");
+            continue;
+        };
+
+        debug!("Handling NVMe-MI message: {msg:x?}");
+        mep.handle_async(&mut subsys, msg, ic, resp).await;
     }
 }
 

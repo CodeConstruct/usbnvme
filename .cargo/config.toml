@@ -7,10 +7,13 @@ runner = 'probe-rs run --chip STM32H7S3L8 --probe 0483:3754 --no-location'
 target = "thumbv7em-none-eabihf"
 
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-# (..)
 # flip-link is useful to debug stack overflows
 #linker = "flip-link"
 
 [net]
 # SSH urls
 git-fetch-with-cli = true
+
+[env]
+# adequate for a 4kB nvme-mi response
+MCTP_ESTACK_MAX_MESSAGE = "4224"

@@ -43,6 +43,7 @@ static_cell = "2.1"
 mctp = { version = "0.2", default-features = false }
 mctp-estack = { version = "0.1", default-features = false, features = ["log"] }
 mctp-usb-embassy = { version = "0.1", default-features = false, features = ["log"] }
+nvme-mi-dev = { git = "https://github.com/CodeConstruct/nvme-mi-dev", optional = true }
 
 log = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 rtt-target = { workspace = true, features = ["log"] }
@@ -65,7 +66,8 @@ embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "bd
 embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
 
 [features]
-default = ["log-usbserial"]
+default = ["log-usbserial", "nvme-mi"]
+nvme-mi = ["dep:nvme-mi-dev"]
 mctp-bench = []
 log-usbserial = []
 
