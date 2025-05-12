@@ -9,25 +9,25 @@
 #![no_std]
 #![no_main]
 
-use core::cell::RefCell;
 use core::arch::asm;
+use core::cell::RefCell;
 
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
 use embassy_executor::Spawner;
 
-use embassy_stm32::xspi::{
-    AddressSize, ChipSelectHighTime, DummyCycles, FIFOThresholdLevel, Instance, MemorySize, MemoryType, Xspi,
-    XspiWidth, TransferConfig, WrapSize,
-};
-use embassy_stm32::pac;
-use embassy_stm32::mode::Blocking;
 use embassy_stm32::Config;
+use embassy_stm32::mode::Blocking;
+use embassy_stm32::pac;
+use embassy_stm32::xspi::{
+    AddressSize, ChipSelectHighTime, DummyCycles, FIFOThresholdLevel, Instance,
+    MemorySize, MemoryType, TransferConfig, WrapSize, Xspi, XspiWidth,
+};
 
 use panic_probe as _;
 
-const FLASH_SIZE: usize = 32 * 1024*1024;
+const FLASH_SIZE: usize = 32 * 1024 * 1024;
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -71,7 +71,9 @@ async fn main(_spawner: Spawner) {
     );
 
     let flash = FlashMemory::new(xspi).await;
-    let flash = FlashCell { inner: RefCell::new(flash) };
+    let flash = FlashCell {
+        inner: RefCell::new(flash),
+    };
 
     let entry = load_elf(&flash).await.expect("elf loading failed");
 
@@ -88,7 +90,9 @@ async fn main(_spawner: Spawner) {
         static mut SEGGER_RTT: [u8; 16];
     }
     let rtt_magic = &raw mut SEGGER_RTT;
-    unsafe { rtt_magic.write_volatile([0; 16]); }
+    unsafe {
+        rtt_magic.write_volatile([0; 16]);
+    }
 
     unsafe {
         asm!(
@@ -153,12 +157,10 @@ fn valid_dest(start: u32, length: u32) -> bool {
         0x0000_0000..0x0003_0000,
         // SRAM1
         0x2400_0000..0x2402_0000,
-
         // DTCM
         0x2000_0000..0x2003_0000,
         // SRAM3
         0x2404_0000..0x2406_0000,
-
         // SRAM2 is used by xspiloader itself (link-bootloader.x), so disallowed.
     ];
 
@@ -171,14 +173,16 @@ fn valid_dest(start: u32, length: u32) -> bool {
     };
 
     for r in range {
-        if r.contains(&start) && r.contains(&(end-1)) {
+        if r.contains(&start) && r.contains(&(end - 1)) {
             return true;
         }
     }
     false
 }
 
-fn neotron_error<T: core::fmt::Debug>(e: &neotron_loader::Error<T>) -> &'static str {
+fn neotron_error<T: core::fmt::Debug>(
+    e: &neotron_loader::Error<T>,
+) -> &'static str {
     use neotron_loader::Error;
     match e {
         Error::NotAnElfFile => "Not an ELF file",
@@ -191,8 +195,9 @@ fn neotron_error<T: core::fmt::Debug>(e: &neotron_loader::Error<T>) -> &'static 
 /// Loads an elf image.
 ///
 /// Returns the entry address
-async fn load_elf(source: impl neotron_loader::Source+Copy) -> Result<u32, ()> {
-
+async fn load_elf(
+    source: impl neotron_loader::Source + Copy,
+) -> Result<u32, ()> {
     let loader = neotron_loader::Loader::new(source).map_err(|e| {
         warn!("ELF loader failed: {}", neotron_error(&e));
     })?;
@@ -200,20 +205,23 @@ async fn load_elf(source: impl neotron_loader::Source+Copy) -> Result<u32, ()> {
     for (idx, ph) in loader.iter_program_headers().enumerate() {
         let Ok(ph) = ph else {
             warn!("program header {} failed", idx);
-            return Err(())
+            return Err(());
         };
 
         // Attempt to load PT_LOAD segments
         if ph.p_type() == neotron_loader::ProgramHeader::PT_LOAD {
-
-            info!("loading 0x{:x} len 0x{:x} from 0x{:x}",
-                ph.p_paddr(), ph.p_memsz(), ph.p_offset());
+            info!(
+                "loading 0x{:x} len 0x{:x} from 0x{:x}",
+                ph.p_paddr(),
+                ph.p_memsz(),
+                ph.p_offset()
+            );
             // Flush in case it faults
             log::logger().flush();
 
             if !valid_dest(ph.p_paddr(), ph.p_memsz()) {
                 error!("Invalid dest");
-                return Err(())
+                return Err(());
             }
 
             if ph.p_memsz() == 0 {
@@ -227,7 +235,10 @@ async fn load_elf(source: impl neotron_loader::Source+Copy) -> Result<u32, ()> {
                 // 0x0 is the start of ITCM where reset vectors can go.
                 // Write the first byte specially using asm.
                 let mut b = 0u8;
-                if source.read(ph.p_offset(), core::slice::from_mut(&mut b)).is_err() {
+                if source
+                    .read(ph.p_offset(), core::slice::from_mut(&mut b))
+                    .is_err()
+                {
                     error!("Failed reading");
                     return Err(());
                 }
@@ -239,12 +250,12 @@ async fn load_elf(source: impl neotron_loader::Source+Copy) -> Result<u32, ()> {
                     );
                 }
 
-                (ph.p_offset()+1, ph.p_paddr()+1, ph.p_memsz()-1)
+                (ph.p_offset() + 1, ph.p_paddr() + 1, ph.p_memsz() - 1)
             };
 
             let dest = (addr as usize) as *mut u8;
-            let dest: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(
-                dest, sz as usize) };
+            let dest: &mut [u8] =
+                unsafe { core::slice::from_raw_parts_mut(dest, sz as usize) };
 
             match source.read(foff, dest) {
                 Ok(()) => info!("loaded {}", idx),
