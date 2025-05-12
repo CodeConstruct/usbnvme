@@ -133,7 +133,7 @@ fn main() -> ! {
     trace!("trace log");
 
     let executor = EXECUTOR_LOW.init(Executor::new());
-    executor.run(|spawner| run(spawner))
+    executor.run(run)
 }
 
 fn run(spawner: Spawner) {

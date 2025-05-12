@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2025 Code Construct
  */
+#![allow(clippy::collapsible_if)]
 use core::fmt::Write;
 use core::cell::Cell;
 
@@ -39,12 +40,9 @@ pub async fn log_usbserial_task(mut sender: UsbSerialSender) {
     /// Writes a buffer in cdc sized chunks
     async fn write_cdc(sender: &mut UsbSerialSender, b: &[u8]) -> Result<(), ()> {
         for pkt in b.chunks(64) {
-            match sender.write_packet(pkt).await {
-                Err(e) => {
-                    rprintln!("usbserial err {:?}", e);
-                    return Err(());
-                }
-                Ok(_) => (),
+            if let Err(e) = sender.write_packet(pkt).await {
+                rprintln!("usbserial err {:?}", e);
+                return Err(());
             }
         }
         // cdc acm zero length packet
