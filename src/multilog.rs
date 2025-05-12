@@ -3,14 +3,14 @@
  * Copyright (c) 2025 Code Construct
  */
 #![allow(clippy::collapsible_if)]
-use core::fmt::Write;
 use core::cell::Cell;
+use core::fmt::Write;
 
 use log::{Log, Metadata, Record};
 use rtt_target::{rprintln, rtt_init_print};
 
-pub use embassy_sync::channel::Channel;
 pub use embassy_sync::blocking_mutex::Mutex as BlockingMutex;
+pub use embassy_sync::channel::Channel;
 
 use heapless::String;
 
@@ -26,7 +26,10 @@ type Line = String<MAX_LINE>;
 static LOGGER: MultiLog = MultiLog::new();
 
 #[allow(dead_code)]
-type UsbSerialSender = embassy_usb::class::cdc_acm::Sender<'static, embassy_stm32::usb::Driver<'static, embassy_stm32::peripherals::USB_OTG_HS>>;
+type UsbSerialSender = embassy_usb::class::cdc_acm::Sender<
+    'static,
+    embassy_stm32::usb::Driver<'static, embassy_stm32::peripherals::USB_OTG_HS>,
+>;
 
 pub fn init() {
     LOGGER.start();
@@ -36,9 +39,11 @@ pub fn init() {
 
 #[embassy_executor::task]
 pub async fn log_usbserial_task(mut sender: UsbSerialSender) {
-
     /// Writes a buffer in cdc sized chunks
-    async fn write_cdc(sender: &mut UsbSerialSender, b: &[u8]) -> Result<(), ()> {
+    async fn write_cdc(
+        sender: &mut UsbSerialSender,
+        b: &[u8],
+    ) -> Result<(), ()> {
         for pkt in b.chunks(64) {
             if let Err(e) = sender.write_packet(pkt).await {
                 rprintln!("usbserial err {:?}", e);
@@ -62,7 +67,10 @@ pub async fn log_usbserial_task(mut sender: UsbSerialSender) {
                 break 'connected;
             }
             if !s.ends_with("\r") {
-                if write_cdc(&mut sender, b" (line truncated)\r").await.is_err() {
+                if write_cdc(&mut sender, b" (line truncated)\r")
+                    .await
+                    .is_err()
+                {
                     break 'connected;
                 }
             }
@@ -86,7 +94,7 @@ impl MultiLog {
     const fn new() -> Self {
         Self {
             serial_backlog: Channel::new(),
-            serial_lost_lines: BlockingMutex::new(Cell::new(LostLine::No))
+            serial_lost_lines: BlockingMutex::new(Cell::new(LostLine::No)),
         }
     }
 
@@ -122,7 +130,6 @@ impl MultiLog {
             }
         });
     }
-
 }
 
 impl Log for MultiLog {
@@ -141,10 +148,15 @@ impl Log for MultiLog {
 
         let mut s = Line::new();
         // Truncated writes will be reported by the other end, detecting \r
-        let _ = write!(&mut s, "{:10} {:<5} {} \r", now, record.level(), record.args());
+        let _ = write!(
+            &mut s,
+            "{:10} {:<5} {} \r",
+            now,
+            record.level(),
+            record.args()
+        );
         self.log_usbserial(record, s);
     }
 
-    fn flush(&self) {
-    }
+    fn flush(&self) {}
 }

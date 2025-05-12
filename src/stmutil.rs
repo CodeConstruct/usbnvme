@@ -16,5 +16,3 @@ pub fn device_id() -> [u8; 12] {
     }
     devid
 }
-
-

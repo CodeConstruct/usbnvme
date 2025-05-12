@@ -10,10 +10,10 @@ use embassy_stm32::peripherals::USB_OTG_HS;
 use embassy_stm32::usb::{DmPin, DpPin, Driver};
 use embassy_stm32::{bind_interrupts, usb, Peri};
 #[allow(unused_imports)]
-use embassy_usb::{Builder, class::cdc_acm};
+use embassy_usb::{class::cdc_acm, Builder};
+use mctp_estack::router::{PortBottom, PortId, Router};
 use mctp_usb_embassy::{MctpUsbClass, MCTP_USB_MAX_PACKET};
 use static_cell::StaticCell;
-use mctp_estack::router::{PortBottom, Router, PortId};
 
 bind_interrupts!(struct Irqs {
     OTG_HS => usb::InterruptHandler<USB_OTG_HS>;
@@ -25,9 +25,7 @@ type Endpoints = (
     cdc_acm::CdcAcmClass<'static, Driver<'static, USB_OTG_HS>>,
 );
 #[cfg(not(feature = "log-usbserial"))]
-type Endpoints = (
-    MctpUsbClass<'static, Driver<'static, USB_OTG_HS>>,
-);
+type Endpoints = (MctpUsbClass<'static, Driver<'static, USB_OTG_HS>>,);
 
 pub(crate) fn setup(
     spawner: Spawner,
@@ -52,14 +50,7 @@ pub(crate) fn setup(
     static EP_OUT_BUF: StaticCell<[u8; OUT_SZ]> = StaticCell::new();
 
     let ep_out_buf = EP_OUT_BUF.init([0; OUT_SZ]);
-    let driver = Driver::new_hs(
-        usb,
-        Irqs,
-        dp,
-        dm,
-        ep_out_buf,
-        driver_config,
-    );
+    let driver = Driver::new_hs(usb, Irqs, dp, dm, ep_out_buf, driver_config);
 
     // UsbDevice will be static to pass to usb_task. That requires static buffers.
     static CONFIG_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
@@ -85,7 +76,7 @@ pub(crate) fn setup(
         static STATE: StaticCell<cdc_acm::State> = StaticCell::new();
         let state = STATE.init(Default::default());
         let serial = cdc_acm::CdcAcmClass::new(&mut builder, state, 64);
-        (mctp, serial,)
+        (mctp, serial)
     };
     #[cfg(not(feature = "log-usbserial"))]
     let ret = (mctp,);
@@ -97,7 +88,9 @@ pub(crate) fn setup(
 }
 
 #[embassy_executor::task]
-async fn usb_task(mut usb: embassy_usb::UsbDevice<'static, Driver<'static, USB_OTG_HS>>) {
+async fn usb_task(
+    mut usb: embassy_usb::UsbDevice<'static, Driver<'static, USB_OTG_HS>>,
+) {
     usb.run().await
 }
 
@@ -136,7 +129,10 @@ pub async fn usb_recv_task(
 #[embassy_executor::task]
 pub async fn usb_send_task(
     mut mctp_usb_bottom: PortBottom<'static>,
-    mut usb_sender: mctp_usb_embassy::Sender<'static, Driver<'static, USB_OTG_HS>>,
+    mut usb_sender: mctp_usb_embassy::Sender<
+        'static,
+        Driver<'static, USB_OTG_HS>,
+    >,
 ) {
     // Outer loop for reattaching USB
     loop {

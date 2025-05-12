@@ -14,9 +14,11 @@ use core::ops::Range;
 
 use embassy_usb::descriptor::{SynchronizationType, UsageType};
 use embassy_usb::Builder;
-use embassy_usb_driver::{Driver, Endpoint, EndpointType, EndpointIn, EndpointOut};
-use mctp_estack::usb::MctpUsbHandler;
+use embassy_usb_driver::{
+    Driver, Endpoint, EndpointIn, EndpointOut, EndpointType,
+};
 use heapless::Vec;
+use mctp_estack::usb::MctpUsbHandler;
 
 use crate::MCTP_USB_MAX_PACKET;
 
@@ -65,9 +67,7 @@ impl<'d, D: Driver<'d>> Sender<'d, D> {
         }
         let r = self.ep.write(&self.buf).await;
         self.buf.clear();
-        r.map_err(|_e| {
-            mctp::Error::TxFailure
-        })
+        r.map_err(|_e| mctp::Error::TxFailure)
     }
 
     pub async fn wait_connection(&mut self) {
@@ -93,7 +93,7 @@ impl<'d, D: Driver<'d>> Receiver<'d, D> {
                 Ok(l) => l,
                 Err(_e) => {
                     warn!("recv failure");
-                    return None
+                    return None;
                 }
             };
             trace!("refill l {}", l);
@@ -107,7 +107,7 @@ impl<'d, D: Driver<'d>> Receiver<'d, D> {
             Ok(a) => a,
             Err(e) => {
                 trace!("decode error");
-                return Some(Err(e))
+                return Some(Err(e));
             }
         };
         trace!("rem len {}", rem.len());
@@ -128,8 +128,11 @@ pub struct MctpUsbClass<'d, D: Driver<'d>> {
 
 impl<'d, D: Driver<'d>> MctpUsbClass<'d, D> {
     pub fn new(builder: &mut Builder<'d, D>) -> Self {
-        let mut func =
-            builder.function(USB_CLASS_MCTP, MCTP_SUBCLASS_DEVICE, MCTP_PROTOCOL_V1);
+        let mut func = builder.function(
+            USB_CLASS_MCTP,
+            MCTP_SUBCLASS_DEVICE,
+            MCTP_PROTOCOL_V1,
+        );
         let mut iface = func.interface();
         // first alt iface is the default (and only)
         let mut alt = iface.alt_setting(
@@ -139,10 +142,16 @@ impl<'d, D: Driver<'d>> MctpUsbClass<'d, D> {
             None,
         );
         let interval = 1;
-        let ep_out =
-            alt.alloc_endpoint_out(EndpointType::Bulk, MCTP_USB_MAX_PACKET as u16, interval);
-        let ep_in =
-            alt.alloc_endpoint_in(EndpointType::Bulk, MCTP_USB_MAX_PACKET as u16, interval);
+        let ep_out = alt.alloc_endpoint_out(
+            EndpointType::Bulk,
+            MCTP_USB_MAX_PACKET as u16,
+            interval,
+        );
+        let ep_in = alt.alloc_endpoint_in(
+            EndpointType::Bulk,
+            MCTP_USB_MAX_PACKET as u16,
+            interval,
+        );
 
         alt.endpoint_descriptor(
             ep_out.info(),

@@ -7,7 +7,7 @@
 
 mod mctpusb;
 
-pub use mctpusb::{MctpUsbClass, Sender, Receiver};
+pub use mctpusb::{MctpUsbClass, Receiver, Sender};
 
 /// Maximum packet for DSP0283 1.0.
 pub const MCTP_USB_MAX_PACKET: usize = 512;

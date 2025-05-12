@@ -21,12 +21,12 @@ use embassy_time::{Duration, Instant, Timer};
 use mctp::Eid;
 use mctp::{AsyncListener, AsyncReqChannel, AsyncRespChannel};
 use mctp_estack::router::{
-    PortBuilder, PortLookup, PortStorage, PortTop, Router, PortId,
+    PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
 };
 
-mod usb;
-mod stmutil;
 mod multilog;
+mod stmutil;
+mod usb;
 
 const USB_MTU: usize = 251;
 
@@ -60,7 +60,9 @@ fn config() -> Config {
     let mut config = embassy_stm32::Config::default();
     // 64MHz hsi_clk
     config.rcc.hsi = Some(HSIPrescaler::DIV1);
-    config.rcc.hsi48 = Some(Hsi48Config { sync_from_usb: true }); // needed for USB
+    config.rcc.hsi48 = Some(Hsi48Config {
+        sync_from_usb: true,
+    }); // needed for USB
     config.rcc.hse = None;
 
     config.rcc.pll1 = Some(Pll {
@@ -74,7 +76,7 @@ fn config() -> Config {
     config.rcc.pll3 = Some(Pll {
         source: PllSource::HSI,
         prediv: PllPreDiv::DIV16, // 4MHz (refN_ck range 1-16MHz)
-        mul: PllMul::MUL80, // 320Mhz
+        mul: PllMul::MUL80,       // 320Mhz
         divp: Some(PllDiv::DIV10), // 32 MHz
         // 32MHz max for Usbphycsel
         divq: Some(PllDiv::DIV10), // 32 MHz
@@ -105,7 +107,11 @@ impl Routes {
 }
 
 impl PortLookup for Routes {
-    fn by_eid(&mut self, _eid: Eid, _src_port: Option<PortId>) -> Option<PortId> {
+    fn by_eid(
+        &mut self,
+        _eid: Eid,
+        _src_port: Option<PortId>,
+    ) -> Option<PortId> {
         // TODO routing table
         Some(Self::USB_INDEX)
     }
@@ -156,9 +162,7 @@ fn run(spawner: Spawner) {
     let usb_port = USB_PORT.init(PortBuilder::new(usb_port_storage));
     let (mctp_usb_top, mctp_usb_bottom) = usb_port.build(USB_MTU).unwrap();
 
-    let ports = PORTS.init([
-        mctp_usb_top,
-    ]);
+    let ports = PORTS.init([mctp_usb_top]);
 
     // MCTP stack
     let max_mtu = USB_MTU;
@@ -177,7 +181,8 @@ fn run(spawner: Spawner) {
     let timeout = timeout_task(router);
     let control = control_task(router);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
-    let usb_recv_loop = usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
+    let usb_recv_loop =
+        usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
 
     // Highest priority goes to the USB send task, to fill the TX buffer
     // as quickly as possible once it becomes ready.
@@ -253,8 +258,9 @@ async fn timeout_task(router: &'static mctp_estack::Router<'static>) -> ! {
 
 #[embassy_executor::task]
 async fn control_task(router: &'static Router<'static>) -> ! {
-
-    let mut l = router.listener(mctp::MCTP_TYPE_CONTROL).expect("control listener");
+    let mut l = router
+        .listener(mctp::MCTP_TYPE_CONTROL)
+        .expect("control listener");
     let mut c = mctp_estack::control::MctpControl::new(router);
 
     let _ = c.set_message_types(&[mctp::MCTP_TYPE_CONTROL]);
