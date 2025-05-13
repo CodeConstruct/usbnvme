@@ -33,6 +33,9 @@ const FLASH_SIZE: usize = 32 * 1024 * 1024;
 async fn main(_spawner: Spawner) {
     rtt_target::rtt_init_log!();
 
+    info!("xspiloader stm32 bootloader.");
+    info!("Loading ELF from external flash...");
+
     // RCC config
     // Default 64MHz is adequate
     let config = Config::default();
