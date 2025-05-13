@@ -1,2 +1,4 @@
 [toolchain]
-components = [ "rustfmt", "llvm-tools" ]
+components = [ "llvm-tools" ]
+channel = "1.86"
+targets = [ "thumbv7em-none-eabihf" ]
