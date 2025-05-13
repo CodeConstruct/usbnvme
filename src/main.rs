@@ -125,7 +125,7 @@ impl PortLookup for Routes {
 /// Persistent UUID
 ///
 /// This is generated based on the hardware device ID.
-fn device_uuid() -> uuid::Uuid {
+pub fn device_uuid() -> uuid::Uuid {
     let devid = stmutil::device_id();
     use hmac::Mac;
     let mut u = hmac::Hmac::<sha2::Sha256>::new_from_slice(&devid).unwrap();

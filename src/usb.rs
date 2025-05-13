@@ -5,12 +5,14 @@
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
+use core::fmt::Write;
 use embassy_executor::Spawner;
 use embassy_stm32::peripherals::USB_OTG_HS;
 use embassy_stm32::usb::{DmPin, DpPin, Driver};
 use embassy_stm32::{bind_interrupts, usb, Peri};
 #[allow(unused_imports)]
 use embassy_usb::{class::cdc_acm, Builder};
+use heapless::String;
 use mctp_estack::router::{PortBottom, PortId, Router};
 use mctp_usb_embassy::{MctpUsbClass, MCTP_USB_MAX_PACKET};
 use static_cell::StaticCell;
@@ -36,7 +38,13 @@ pub(crate) fn setup(
     let mut config = embassy_usb::Config::new(0x0000, 0x0000);
     config.manufacturer = Some("Code Construct");
     config.product = Some("usbnvme-0.1");
-    config.serial_number = Some("1");
+
+    // USB serial number matches the first 12 digits of the mctp uuid
+    static SERIAL: StaticCell<String<{ uuid::fmt::Simple::LENGTH }>> =
+        StaticCell::new();
+    let serial = SERIAL.init(String::new());
+    write!(serial, "{}", crate::device_uuid().simple()).unwrap();
+    config.serial_number = Some(&serial[..12]);
 
     let driver_config = embassy_stm32::usb::Config::default();
     // TODO: is vbus detection needed? Seems not on the nucleo?

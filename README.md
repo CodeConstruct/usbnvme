@@ -139,6 +139,37 @@ cargo run --release
 Omit the `--release` to add extra assertions/integer overflow checks and `debug` level logs,
 at the expense of binary size.
 
+## Device identifiers
+
+Each board has a persistent UUID, reported by MCTP control protocol.
+The first 12 digits of that UUID are used as the USB serial number.
+
+That can be used to correlate the device ID printed at boot on the ST-Link debug log,
+or the Linux usb-serial path.
+
+```sh
+$ grep . /sys/class/net/mctpusb*/device/../serial
+/sys/class/net/mctpusb0/device/../serial:4f7aaaa34b
+/sys/class/net/mctpusb1/device/../serial:9868840502
+
+$ ls -l /dev/serial/by-id/*
+lrwxrwxrwx    1 root     root            13 May 13 08:30 /dev/serial/by-id/usb-Code_Construct_usbnvme-0.1_4f7aaaa34b-if01 -> ../../ttyACM0
+lrwxrwxrwx    1 root     root            13 May 13 08:30 /dev/serial/by-id/usb-Code_Construct_usbnvme-0.1_9868840502-if01 -> ../../ttyACM1
+
+$ busctl call  au.com.codeconstruct.MCTP1 /au/com/codeconstruct/mctp1/interfaces/mctpusb0 au.com.codeconstruct.MCTP.BusOwner1 SetupEndpoint ay 0
+yisb 8 1 "/au/com/codeconstruct/mctp1/networks/1/endpoints/8" false
+$ busctl get-property   au.com.codeconstruct.MCTP1 /au/com/codeconstruct/mctp1/networks/1/endpoints/8 xyz.openbmc_project.Common.UUID UUID
+s "4f7aaaa3-4b5e-41bb-ba2f-c21aac34dfe7"
+
+```
+
+When multiple devices are attached, a longer `probe-rs` argument is needed
+to distinguish them, eg
+```sh
+probe-rs run --probe 0483:3754:003200303133510F35333335
+```
+The `probe-rs` ST-Link identifier is different to the MCTP-USB UUID.
+
 ## Static cross-compiled probe-rs
 
 If probe-rs needs to run on an embedded Linux ARM system, it can be built statically.
