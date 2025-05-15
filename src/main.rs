@@ -140,8 +140,8 @@ pub fn device_uuid() -> uuid::Uuid {
 fn main() -> ! {
     multilog::init();
     info!("usbnvme. device {}", device_uuid().hyphenated());
-    debug!("debug log");
-    trace!("trace log");
+    debug!("debug log enabled");
+    trace!("trace log enabled");
 
     let executor = EXECUTOR_LOW.init(Executor::new());
     executor.run(run)
@@ -233,20 +233,20 @@ async fn echo_task(router: &'static mctp_estack::Router<'static>) -> ! {
     let mut buf = [0u8; 100];
     loop {
         let Ok((msg, mut resp, _tag, typ, _ic)) = l.recv(&mut buf).await else {
-            trace!("echo Bad listener recv");
+            warn!("echo Bad listener recv");
             continue;
         };
 
         if !msg.starts_with(&VENDOR_SUBTYPE_ECHO) {
-            trace!("echo wrong vendor subtype");
+            warn!("echo wrong vendor subtype");
             continue;
         }
 
-        debug!("echo msg len {}", msg.len());
-        if let Err(_e) = resp.send(typ, msg).await {
-            trace!("listener reply fail");
+        info!("echo msg len {}", msg.len());
+        if let Err(e) = resp.send(typ, msg).await {
+            warn!("listener reply fail {e}");
         } else {
-            trace!("replied");
+            info!("replied");
         }
     }
 }

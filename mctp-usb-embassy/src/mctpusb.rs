@@ -85,7 +85,6 @@ pub struct Receiver<'d, D: Driver<'d>> {
 impl<'d, D: Driver<'d>> Receiver<'d, D> {
     /// Returns None on USB disconnected.
     pub async fn receive(&mut self) -> Option<mctp::Result<&[u8]>> {
-        info!("receive");
         if self.remaining.is_empty() {
             trace!("empty");
             // Refill
