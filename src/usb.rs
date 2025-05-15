@@ -35,9 +35,9 @@ pub(crate) fn setup(
     dp: Peri<'static, impl DpPin<USB_OTG_HS>>,
     dm: Peri<'static, impl DmPin<USB_OTG_HS>>,
 ) -> Endpoints {
-    let mut config = embassy_usb::Config::new(0x0000, 0x0000);
+    let mut config = embassy_usb::Config::new(0x3834, 0x0000);
     config.manufacturer = Some("Code Construct");
-    config.product = Some("usbnvme-0.1");
+    config.product = Some(crate::PRODUCT);
 
     // USB serial number matches the first 12 digits of the mctp uuid
     static SERIAL: StaticCell<String<{ uuid::fmt::Simple::LENGTH }>> =

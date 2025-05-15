@@ -136,10 +136,18 @@ pub fn device_uuid() -> uuid::Uuid {
     uuid::Builder::from_random_bytes(u).into_uuid()
 }
 
+pub const PRODUCT: &str = concat!(
+    "usbnvme",
+    "-",
+    env!("CARGO_PKG_VERSION"),
+    "-",
+    env!("GIT_REV")
+);
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     multilog::init();
-    info!("usbnvme. device {}", device_uuid().hyphenated());
+    info!("{}. device {}", PRODUCT, device_uuid().hyphenated());
     debug!("debug log enabled");
     trace!("trace log enabled");
 
