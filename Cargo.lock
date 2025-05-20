@@ -1170,7 +1170,6 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "embassy-executor",
- "embassy-futures 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-stm32",
  "log",
  "neotron-loader",

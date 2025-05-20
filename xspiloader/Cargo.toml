@@ -8,7 +8,6 @@ license = "MIT OR Apache-2.0"
 embassy-executor = { workspace = true, features = [
     "arch-cortex-m", "log",
     ] }
-embassy-futures = { workspace = true }
 
 # Need unreleased embassy-stm32 for xspi external flash driver
 embassy-stm32 = { git = "https://github.com/embassy-rs/embassy", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525", features = ["stm32h7s3l8", "unstable-pac", "log"] }
