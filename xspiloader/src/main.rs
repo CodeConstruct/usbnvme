@@ -42,8 +42,8 @@ async fn main(_spawner: Spawner) {
     // Initialize peripherals
     let p = embassy_stm32::init(config);
 
-    /* Set ITCM/SRAM1 split to 128/64kB, DTCM/SRAM3 to 64/128kB */
-    set_tcm_split(TCMSplit::Tcm128, TCMSplit::Tcm64);
+    /* Set ITCM/SRAM1 split to 192/0kB, DTCM/SRAM3 to 64/128kB */
+    set_tcm_split(TCMSplit::Tcm192, TCMSplit::Tcm64);
 
     let qspi_config = embassy_stm32::xspi::Config {
         fifo_threshold: FIFOThresholdLevel::_4Bytes,
@@ -106,7 +106,7 @@ async fn main(_spawner: Spawner) {
     }
 }
 
-/// `?TCM` gets this much memory, the `SRAM?` gets the rest.
+/// `TCM` gets this much memory, the `SRAM` gets the rest.
 #[allow(unused)]
 enum TCMSplit {
     Tcm64 = 0b000,
@@ -114,9 +114,21 @@ enum TCMSplit {
     Tcm192 = 0b010,
 }
 
-/// Set ITCM/SRAM1 and DTCM/SRAM3 split.
+/// Set persistent ITCM/SRAM1 and DTCM/SRAM3 split.
 fn set_tcm_split(itcm: TCMSplit, dtcm: TCMSplit) {
     let regs = pac::FLASH;
+
+    let itcm = itcm as u8;
+    let dtcm = dtcm as u8;
+
+    let existing = pac::FLASH.obw2sr().read();
+    if existing.itcm_axi_share() == itcm
+        && existing.dtcm_axi_share() == dtcm {
+        debug!("TCM split already set");
+        return;
+    }
+
+    info!("Programming TCM split ITCM {itcm} DTCM {dtcm}");
 
     // Unlock FLASH_OPTCR if necessary.
     // Unlocking twice would cause a busfault.
