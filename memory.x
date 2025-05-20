@@ -4,12 +4,14 @@ MEMORY
     EXT_FLASH : ORIGIN = 0x70000000, LENGTH = 0x2000000
 
     /* text/rodata in ITCM. Note that it is not accesible by peripherals */
-    /* ITCM/SRAM1 split is set to non-default 128/64. */
-    ITCM  : ORIGIN = 0x00000000, LENGTH =  128K
-    SRAM1   : ORIGIN = 0x24000000, LENGTH =  64K
+    /* ITCM/SRAM1 split is set to non-default 192/0. */
+    ITCM  : ORIGIN = 0x00000000, LENGTH =  192K
+
+    /* Note that SRAM1 ORIGIN varies based on ITCM_AXI_SHARED */
+    /* SRAM1   : ORIGIN = 0x24000000, LENGTH =  0K */
 
     /* DTCM/SRAM3 split is set to 64/128 */
-    /* Use SRAM3 for RAM. */
+    /* Use SRAM3 for RAM so that peripherals can do DMA */
     DTCM  : ORIGIN = 0x20000000, LENGTH =  64K
     RAM : ORIGIN = 0x24040000, LENGTH =  128K
 
