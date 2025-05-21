@@ -12,6 +12,25 @@ Current features are:
 
 Pending are NVMe-MI and other MCTP protocols.
 
+When running with the usbnvme firmware, the Nucleo board provides USB
+interfaces on two separate USB-C ports:
+
+- the "MCTP" port (labelled `CN2 [USB]` on the board silkscreen)
+- the "debug" port (labelled `CN5 [STLK]` on the board silkscreen)
+
+The MCTP port exposes USB device (product:vendor ID `ccde`:`0000`), with two
+functions:
+
+- A MCTP-over-USB device, providing the core MCTP functionality
+- A serial-over-USB device, providing device debug logs.
+
+If necessary, the serial-over-USB device can be disabled by build-time
+configuration.
+
+The debug port exposes a hardware ST-Link interface, allowing firmware upload,
+chip debug and access to debug logs. These debug logs are a mirror of those from
+the serial-over-USB device above.
+
 ## Requirements
 
 Install Rust with [`rustup`](https://rustup.rs/).
