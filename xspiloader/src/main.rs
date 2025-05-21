@@ -33,7 +33,11 @@ const FLASH_SIZE: usize = 32 * 1024 * 1024;
 async fn main(_spawner: Spawner) {
     rtt_target::rtt_init_log!();
 
-    info!("xspiloader stm32 bootloader.");
+    info!(
+        "xspiloader stm32 bootloader. {} {}",
+        env!("CARGO_PKG_VERSION"),
+        env!("GIT_REV"),
+    );
     info!("Loading ELF from external flash...");
 
     // RCC config
@@ -122,8 +126,7 @@ fn set_tcm_split(itcm: TCMSplit, dtcm: TCMSplit) {
     let dtcm = dtcm as u8;
 
     let existing = pac::FLASH.obw2sr().read();
-    if existing.itcm_axi_share() == itcm
-        && existing.dtcm_axi_share() == dtcm {
+    if existing.itcm_axi_share() == itcm && existing.dtcm_axi_share() == dtcm {
         debug!("TCM split already set");
         return;
     }
