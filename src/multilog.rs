@@ -111,8 +111,8 @@ impl MultiLog {
     }
 
     fn log_usbserial(&self, record: &Record, msg: Line) {
-        if record.level() > log::Level::Info {
-            // Avoid filling queue with debug or trace logs
+        if record.level() >= log::Level::Trace {
+            // Avoid filling queue with trace logs
             return;
         }
 
