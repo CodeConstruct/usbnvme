@@ -7,7 +7,8 @@ This implements a MCTP-over-USB device on a STM32H7S3L8 Nucleo board.
 Current features are:
 
 - MCTP Control Protocol
-- mctp-echo and mctp-bench send functionality (`mctp-bench` as an optional feature).
+- `mctp-echo` test service
+- optional `mctp-bench` benchmark service
 - Debug log via USB CDC-ACM
 
 Pending are NVMe-MI and other MCTP protocols.
@@ -26,6 +27,16 @@ functions:
 
 If necessary, the serial-over-USB device can be disabled by build-time
 configuration.
+
+The MCTP endpoint supports the MCTP control protocol, allowing EID assignement
+and device enumeration.
+
+For testing, the endpoint will respond to MCTP echo messages - a Code Construct
+vendor message type, supported by the `mctp-req` utility at [MCTP
+tools][https://github.com/CodeConstruct/mctp].
+
+For benchmarking, `mctp-bench` (as a sender) is optionally supported, but
+is disabled in the default build.
 
 The debug port exposes a hardware ST-Link interface, allowing firmware upload,
 chip debug and access to debug logs. These debug logs are a mirror of those from
