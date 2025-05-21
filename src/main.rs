@@ -250,7 +250,7 @@ async fn echo_task(router: &'static mctp_estack::Router<'static>) -> ! {
             continue;
         }
 
-        info!("echo msg len {}", msg.len());
+        info!("echo msg len {} from eid {}", msg.len(), resp.remote_eid());
         if let Err(e) = resp.send(typ, msg).await {
             warn!("listener reply fail {e}");
         } else {
@@ -283,15 +283,15 @@ async fn control_task(router: &'static Router<'static>) -> ! {
     let mut buf = [0u8; 256];
     loop {
         let Ok((msg, resp, _tag, _typ, _ic)) = l.recv(&mut buf).await else {
-            info!("control recv err");
+            warn!("control recv err");
             continue;
         };
-        info!("control recv msg {}", msg.len());
+        info!("control recv len {} from eid {}", msg.len(), resp.remote_eid());
 
         let r = c.handle_async(msg, resp).await;
 
         if let Err(e) = r {
-            info!("control handler failure: {}", e);
+            warn!("control handler failure: {}", e);
         }
     }
 }
@@ -334,7 +334,7 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
 #[embassy_executor::task]
 pub(crate) async fn blink_task(mut led: gpio::Output<'static>) {
     loop {
-        info!("led high");
+        trace!("led high");
         led.set_high();
         Timer::after(Duration::from_millis(2000)).await;
 

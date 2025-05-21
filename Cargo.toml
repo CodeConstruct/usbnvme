@@ -26,8 +26,8 @@ cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
 panic-probe = { version = "1", features = ["print-rtt"] }
 embassy-executor = { version = "0.7", features = ["executor-thread"] }
 
-mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "90552045970d0f106ac8785b48ba86f93ad12804", default-features = false }
-mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "90552045970d0f106ac8785b48ba86f93ad12804", default-features = false, features = ["log"] }
+mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "742ca42d3b3bbea3bc86d64fc965d13ee4c4c41a", default-features = false }
+mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "742ca42d3b3bbea3bc86d64fc965d13ee4c4c41a", default-features = false, features = ["log"] }
 
 [dependencies]
 embassy-executor = { workspace = true, features = [
@@ -63,7 +63,7 @@ hmac = { version = "0.12.1", default-features = false }
 
 [patch.'https://github.com/CodeConstruct/mctp-rs/']
 # extra slashes bodge workaround for https://github.com/rust-lang/cargo/issues/5478
-mctp = { git = "http://github.com/CodeConstruct//mctp-rs/", rev = "90552045970d0f106ac8785b48ba86f93ad12804" }
+mctp = { git = "http://github.com/CodeConstruct//mctp-rs/", rev = "742ca42d3b3bbea3bc86d64fc965d13ee4c4c41a" }
 
 [patch.crates-io]
 # mctp-estack currently requires unreleased git embassy-sync for https://github.com/embassy-rs/embassy/pull/3829
