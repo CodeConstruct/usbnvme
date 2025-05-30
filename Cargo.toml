@@ -48,7 +48,7 @@ mctp-usb-embassy = { path = "mctp-usb-embassy" }
 mctp = { workspace = true }
 mctp-estack = { workspace = true }
 
-log = { workspace = true, features = ["release_max_level_info", "max_level_debug"] }
+log = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 rtt-target = { workspace = true, features = ["log"] }
 
 cortex-m = { workspace = true }
