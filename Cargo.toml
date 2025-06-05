@@ -6,7 +6,6 @@ license = "GPL-3.0-only"
 
 [workspace]
 members = [
-    "mctp-usb-embassy",
     "xspiloader",
 ]
 
@@ -26,9 +25,6 @@ cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
 panic-probe = { version = "1", features = ["print-rtt"] }
 embassy-executor = { version = "0.7", features = ["executor-thread"] }
 
-mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "0ae21b3e52eccca5ebee8796a317be9806851416", default-features = false }
-mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "0ae21b3e52eccca5ebee8796a317be9806851416", default-features = false, features = ["log"] }
-
 [dependencies]
 embassy-executor = { workspace = true, features = [
     "arch-cortex-m", "executor-interrupt",
@@ -44,9 +40,9 @@ embedded-hal-async = { workspace = true }
 heapless = { workspace = true }
 static_cell = "2.1"
 
-mctp-usb-embassy = { path = "mctp-usb-embassy" }
-mctp = { workspace = true }
-mctp-estack = { workspace = true }
+mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b", default-features = false }
+mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b", default-features = false, features = ["log"] }
+mctp-usb-embassy = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b", default-features = false, features = ["log"] }
 
 log = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 rtt-target = { workspace = true, features = ["log"] }
@@ -57,9 +53,15 @@ uuid = { version = "1.16.0", default-features = false }
 sha2 = { version = "0.10", default-features = false, features = ["force-soft-compact"] }
 hmac = { version = "0.12.1", default-features = false }
 
-#[patch.'https://github.com/CodeConstruct/mctp-rs/']
-#mctp-estack = { path = "../mctp-rs/mctp-estack" }
-#mctp = { path = "../mctp-rs/mctp" }
+# [patch.'https://github.com/CodeConstruct/mctp-rs/']
+# mctp-estack = { path = "../mctp-rs/mctp-estack" }
+# mctp = { path = "../mctp-rs/mctp" }
+# mctp-usb-embassy = { path = "../mctp-rs/mctp-usb-embassy" }
+
+[patch.'https://github.com/CodeConstruct/mctp-rs/']
+# Patch mctp-rs so that it won't clash with slightly different git rev dependencies from nvme-mi-dev.
+# Double-slash bodge workaround for https://github.com/rust-lang/cargo/issues/5478
+mctp = { git = "http://github.com/CodeConstruct//mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b" }
 
 [patch.crates-io]
 # mctp-estack currently requires unreleased git embassy-sync for https://github.com/embassy-rs/embassy/pull/3829

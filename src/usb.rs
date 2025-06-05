@@ -105,79 +105,22 @@ async fn usb_task(
 #[embassy_executor::task]
 pub async fn usb_recv_task(
     router: &'static Router<'static>,
-    mut usb_receiver: mctp_usb_embassy::Receiver<
+    usb_receiver: mctp_usb_embassy::Receiver<
         'static,
         Driver<'static, USB_OTG_HS>,
     >,
     port: PortId,
 ) {
-    // Outer loop for reattaching USB
-    loop {
-        debug!("mctp usb recv waiting");
-        usb_receiver.wait_connection().await;
-        info!("mctp usb recv attached");
-
-        // Inner loop receives packets and provides MCTP handling
-        'receiving: loop {
-            match usb_receiver.receive().await {
-                Some(Ok(pkt)) => {
-                    trace!("router recv len {}", pkt.len());
-                    router.inbound(pkt, port).await;
-                }
-                Some(Err(e)) => debug!("mctp usb packet decode failure {}", e),
-                None => {
-                    info!("mctp usb disconnected");
-                    break 'receiving;
-                }
-            }
-        }
-    }
+    usb_receiver.run(router, port).await;
 }
 
 #[embassy_executor::task]
 pub async fn usb_send_task(
-    mut mctp_usb_bottom: PortBottom<'static>,
-    mut usb_sender: mctp_usb_embassy::Sender<
+    mctp_usb_bottom: PortBottom<'static>,
+    usb_sender: mctp_usb_embassy::Sender<
         'static,
         Driver<'static, USB_OTG_HS>,
     >,
 ) {
-    // Outer loop for reattaching USB
-    loop {
-        debug!("mctp usb send waiting");
-        usb_sender.wait_connection().await;
-        debug!("mctp usb send attached");
-        'sending: loop {
-            // Wait for at least one MCTP packet enqueued
-            let (pkt, _dest) = mctp_usb_bottom.outbound().await;
-            let r = usb_sender.feed(pkt);
-
-            // Consume it
-            mctp_usb_bottom.outbound_done();
-            if r.is_err() {
-                // MCTP packet too large for USB
-                continue 'sending;
-            }
-
-            'fill: loop {
-                let Some((pkt, _dest)) = mctp_usb_bottom.try_outbound() else {
-                    // No more packets
-                    break 'fill;
-                };
-
-                // See if it fits in the payload
-                match usb_sender.feed(pkt) {
-                    // Success, consume it
-                    Ok(()) => mctp_usb_bottom.outbound_done(),
-                    // Won't fit, leave it until next 'sending iteration.
-                    Err(_) => break 'fill,
-                }
-            }
-
-            if let Err(e) = usb_sender.flush().await {
-                debug!("usb send error {}", e);
-                break 'sending;
-            }
-        }
-    }
+    usb_sender.run(mctp_usb_bottom).await;
 }
