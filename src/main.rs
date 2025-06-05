@@ -240,7 +240,7 @@ async fn echo_task(router: &'static mctp_estack::Router<'static>) -> ! {
     let mut l = router.listener(mctp::MCTP_TYPE_VENDOR_PCIE).unwrap();
     let mut buf = [0u8; 100];
     loop {
-        let Ok((msg, mut resp, _tag, typ, _ic)) = l.recv(&mut buf).await else {
+        let Ok((_typ, _ic, msg, mut resp)) = l.recv(&mut buf).await else {
             warn!("echo Bad listener recv");
             continue;
         };
@@ -251,7 +251,7 @@ async fn echo_task(router: &'static mctp_estack::Router<'static>) -> ! {
         }
 
         info!("echo msg len {} from eid {}", msg.len(), resp.remote_eid());
-        if let Err(e) = resp.send(typ, msg).await {
+        if let Err(e) = resp.send(msg).await {
             warn!("listener reply fail {e}");
         } else {
             info!("replied");
@@ -282,7 +282,7 @@ async fn control_task(router: &'static Router<'static>) -> ! {
     info!("MCTP Control Protocol server listening");
     let mut buf = [0u8; 256];
     loop {
-        let Ok((msg, resp, _tag, _typ, _ic)) = l.recv(&mut buf).await else {
+        let Ok((_typ, _ic, msg, resp)) = l.recv(&mut buf).await else {
             warn!("control recv err");
             continue;
         };
