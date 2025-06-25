@@ -7,11 +7,10 @@ This implements a MCTP-over-USB device on a STM32H7S3L8 Nucleo board.
 Current features are:
 
 - MCTP Control Protocol
+- NVMe-MI responder
 - `mctp-echo` test service
 - optional `mctp-bench` benchmark service
 - Debug log via USB CDC-ACM
-
-Pending are NVMe-MI and other MCTP protocols.
 
 When running with the usbnvme firmware, the Nucleo board provides USB
 interfaces on two separate USB-C ports:
@@ -19,8 +18,8 @@ interfaces on two separate USB-C ports:
 - the "MCTP" port (labelled `CN2 [USB]` on the board silkscreen)
 - the "debug" port (labelled `CN5 [STLK]` on the board silkscreen)
 
-The MCTP port exposes USB device (product:vendor ID `ccde`:`0000`), with two
-functions:
+The MCTP port exposes a USB device (product:vendor ID `ccde`:`0000`), with two
+USB functions:
 
 - A MCTP-over-USB device, providing the core MCTP functionality
 - A serial-over-USB device, providing device debug logs.
