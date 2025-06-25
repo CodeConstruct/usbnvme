@@ -40,9 +40,9 @@ embedded-hal-async = { workspace = true }
 heapless = { workspace = true }
 static_cell = "2.1"
 
-mctp = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b", default-features = false }
-mctp-estack = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b", default-features = false, features = ["log"] }
-mctp-usb-embassy = { git = "http://github.com/CodeConstruct/mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b", default-features = false, features = ["log"] }
+mctp = { version = "0.2", default-features = false }
+mctp-estack = { version = "0.1", default-features = false, features = ["log"] }
+mctp-usb-embassy = { version = "0.1", default-features = false, features = ["log"] }
 
 log = { workspace = true, features = ["release_max_level_debug", "max_level_debug"] }
 rtt-target = { workspace = true, features = ["log"] }
@@ -53,20 +53,7 @@ uuid = { version = "1.16.0", default-features = false }
 sha2 = { version = "0.10", default-features = false, features = ["force-soft-compact"] }
 hmac = { version = "0.12.1", default-features = false }
 
-# [patch.'https://github.com/CodeConstruct/mctp-rs/']
-# mctp-estack = { path = "../mctp-rs/mctp-estack" }
-# mctp = { path = "../mctp-rs/mctp" }
-# mctp-usb-embassy = { path = "../mctp-rs/mctp-usb-embassy" }
-
-[patch.'https://github.com/CodeConstruct/mctp-rs/']
-# Patch mctp-rs so that it won't clash with slightly different git rev dependencies from nvme-mi-dev.
-# Double-slash bodge workaround for https://github.com/rust-lang/cargo/issues/5478
-mctp = { git = "http://github.com/CodeConstruct//mctp-rs/", rev = "59503b6475360eb0a80a74ab8721a6e8e685f91b" }
-
 [patch.crates-io]
-# mctp-estack currently requires unreleased git embassy-sync for https://github.com/embassy-rs/embassy/pull/3829
-embassy-sync = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
-
 # https://github.com/embassy-rs/embassy/pull/3765 Display for Hertz in embassy-stm32
 embassy-stm32 = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
 embassy-usb-synopsys-otg = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }

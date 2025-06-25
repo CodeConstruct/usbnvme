@@ -646,13 +646,15 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "mctp"
-version = "0.1.0"
-source = "git+http://github.com/CodeConstruct//mctp-rs/?rev=59503b6475360eb0a80a74ab8721a6e8e685f91b#59503b6475360eb0a80a74ab8721a6e8e685f91b"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8280034c4afaa377d825c17261987ff26a638369ea4b46919e1726741eec253"
 
 [[package]]
 name = "mctp-estack"
 version = "0.1.0"
-source = "git+http://github.com/CodeConstruct/mctp-rs/?rev=59503b6475360eb0a80a74ab8721a6e8e685f91b#59503b6475360eb0a80a74ab8721a6e8e685f91b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92b74507f2747455d4c413d24b009f1a8f6b3b6b6824f2388f933476a91466e9"
 dependencies = [
  "crc",
  "embassy-sync 0.7.0",
@@ -668,7 +670,8 @@ dependencies = [
 [[package]]
 name = "mctp-usb-embassy"
 version = "0.1.0"
-source = "git+http://github.com/CodeConstruct/mctp-rs/?rev=59503b6475360eb0a80a74ab8721a6e8e685f91b#59503b6475360eb0a80a74ab8721a6e8e685f91b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d958d878980f22cd4e4c3bbde17a3177b9e35be90189686135f727c296ff5a8"
 dependencies = [
  "embassy-futures 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-usb",
