@@ -172,17 +172,20 @@ fn run(spawner: Spawner) {
     static ROUTER: StaticCell<Router> = StaticCell::new();
 
     // USB port for the MCTP router
-    let usb_port_storage = USB_PORT_STORAGE.init(PortStorage::new());
-    let usb_port = USB_PORT.init(PortBuilder::new(usb_port_storage));
+    let usb_port_storage = USB_PORT_STORAGE.init_with(PortStorage::new);
+    let usb_port = USB_PORT.init_with(|| PortBuilder::new(usb_port_storage));
     let (mctp_usb_top, mctp_usb_bottom) = usb_port.build(USB_MTU).unwrap();
 
     let ports = PORTS.init([mctp_usb_top]);
 
     // MCTP stack
     let max_mtu = USB_MTU;
-    let stack = mctp_estack::Stack::new(Eid(0), max_mtu, now());
     let lookup = LOOKUP.init(Routes {});
-    let router = ROUTER.init(Router::new(stack, ports, lookup));
+    // Router+Stack is large, using init_with() is important to construct in-place
+    let router = ROUTER.init_with(|| {
+        let stack = mctp_estack::Stack::new(Eid(0), max_mtu, now());
+        Router::new(stack, ports, lookup)}
+    );
 
     #[cfg(feature = "log-usbserial")]
     let (mctpusb, usbserial) = endpoints;
