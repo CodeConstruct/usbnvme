@@ -5,6 +5,7 @@
 #![allow(clippy::collapsible_if)]
 use core::cell::Cell;
 use core::fmt::Write;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use log::{Log, Metadata, Record};
 use rtt_target::{rprintln, rtt_init_print};
@@ -15,6 +16,10 @@ pub use embassy_sync::channel::Channel;
 use heapless::String;
 
 use crate::now;
+
+/// Set LOG_STACK_SIZE environment variable at build time to print
+/// difference from initial stack size in each log message.
+const LOG_STACK_SIZE: bool = option_env!("LOG_STACK_SIZE").is_some();
 
 // Aribtrary limits, limited by RAM
 const MAX_LINE: usize = 120;
@@ -95,6 +100,7 @@ enum LostLine {
 struct MultiLog {
     serial_backlog: Channel<RawMutex, Line, SERIAL_BACKLOG>,
     serial_lost_lines: BlockingMutex<RawMutex, Cell<LostLine>>,
+    psp_top: AtomicU32,
 }
 
 impl MultiLog {
@@ -102,10 +108,13 @@ impl MultiLog {
         Self {
             serial_backlog: Channel::new(),
             serial_lost_lines: BlockingMutex::new(Cell::new(LostLine::No)),
+            psp_top: AtomicU32::new(0),
         }
     }
 
     fn start(&self) {
+        self.psp_top
+            .store(cortex_m::register::msp::read(), Ordering::Relaxed);
         // RTT default is non-blocking (drop on full), 1024 byte buffer
         rtt_init_print!();
     }
@@ -151,7 +160,20 @@ impl Log for MultiLog {
         }
 
         let now = now();
-        rprintln!("{:10} {:<5} {}", now, record.level(), record.args());
+        // TODO: use format_args after rust 1.89
+        if LOG_STACK_SIZE {
+            let psp = cortex_m::register::msp::read();
+            let stack = self.psp_top.load(Ordering::Relaxed) - psp;
+            rprintln!(
+                "{:10} {:<5} {:08x} {}",
+                now,
+                record.level(),
+                stack,
+                record.args()
+            );
+        } else {
+            rprintln!("{:10} {:<5} {}", now, record.level(), record.args());
+        }
 
         let mut s = Line::new();
         // Truncated writes will be reported by the other end, detecting \r
