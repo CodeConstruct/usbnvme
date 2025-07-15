@@ -210,6 +210,15 @@ SECTIONS
     *(.ARM.exidx.*);
     *(.ARM.extab.*);
   }
+
+  /* ## SRAM3 */
+  .sram3 : ALIGN(4)
+  {
+    . = ALIGN(4);
+
+    *(.sram3 .sram3.*);
+    . = ALIGN(4); /* 4-byte align the end (VMA) of this section */
+  } > SRAM3
 }
 
 /* Do not exceed this mark in the error messages below                                    | */

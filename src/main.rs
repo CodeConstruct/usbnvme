@@ -366,7 +366,9 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
     const MAGIC: u16 = 0xbeca;
     const SEQ_START: u32 = u32::MAX - 5;
 
-    let mut buf = [0u8; BENCH_LEN];
+    static BUF: StaticCell<[u8; BENCH_LEN]> = StaticCell::new();
+
+    let buf = BUF.init_with(|| [0u8; BENCH_LEN]);
     for (i, b) in buf.iter_mut().enumerate() {
         *b = (i & 0xff) as u8;
     }
@@ -382,7 +384,7 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
         buf[5..9].copy_from_slice(&counter.0.to_le_bytes());
         counter += 1;
 
-        let r = req.send(mctp::MCTP_TYPE_VENDOR_PCIE, &buf).await;
+        let r = req.send(mctp::MCTP_TYPE_VENDOR_PCIE, buf).await;
         if let Err(e) = r {
             trace!("Error! {}", e);
         }

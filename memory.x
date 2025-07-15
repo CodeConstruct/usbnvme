@@ -10,10 +10,10 @@ MEMORY
     /* Note that SRAM1 ORIGIN varies based on ITCM_AXI_SHARED */
     /* SRAM1   : ORIGIN = 0x24000000, LENGTH =  0K */
 
-    /* DTCM/SRAM3 split is set to 64/128 */
-    /* Use SRAM3 for RAM so that peripherals can do DMA */
-    DTCM  : ORIGIN = 0x20000000, LENGTH =  64K
-    RAM : ORIGIN = 0x24040000, LENGTH =  128K
+    /* DTCM/SRAM3 split is set to 128/64 */
+    RAM  : ORIGIN = 0x20000000, LENGTH =  128K
+    /* SRAM3 can be used for DMA */
+    SRAM3 : ORIGIN = 0x24040000, LENGTH =  64K
 
     /* non-ECC. Used by bootloader. */
     SRAM2 : ORIGIN = 0x24020000, LENGTH =  128K
