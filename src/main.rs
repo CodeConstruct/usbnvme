@@ -31,7 +31,12 @@ mod usb;
 
 const USB_MTU: usize = 251;
 
-const BENCH_LEN: usize = 987;
+// Optimal BENCH_LEN is (N*247 - 1).
+// USB_MTU - 4, and one byte for MCTP message type.
+// Even N are more efficient.
+const BENCH_LEN: usize = 3951;
+// const BENCH_LEN: usize = 987;
+// const BENCH_LEN: usize = 246;
 const _: () = assert!(BENCH_LEN >= 9);
 
 // Simple panic handler
