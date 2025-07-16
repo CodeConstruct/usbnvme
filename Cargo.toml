@@ -11,8 +11,8 @@ members = [
 
 [workspace.dependencies]
 embassy-sync = { version = "0.7" }
-embassy-usb = { version = "0.4" }
-embassy-usb-driver = { version = "0.1" }
+embassy-usb = { version = "0.5" }
+embassy-usb-driver = { version = "0.2" }
 embassy-futures = { version = "0.1" }
 embassy-time = "0.4"
 log = "0.4"
@@ -56,14 +56,21 @@ hmac = { version = "0.12.1", default-features = false }
 
 [patch.crates-io]
 # https://github.com/embassy-rs/embassy/pull/3765 Display for Hertz in embassy-stm32
-embassy-stm32 = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
-embassy-usb-synopsys-otg = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+# https://github.com/embassy-rs/embassy/pull/4401 for USB write performance
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
+embassy-usb-synopsys-otg = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
 
-embassy-time = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
-embassy-time-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
-embassy-usb = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
-embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
-embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "bdeeb388fff2462cccf82cf4f8444c0419db5525" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
+embassy-time-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
+embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
+
+# Updated for embassy-usb api change
+mctp-usb-embassy = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "32cfb14301ba52dbd634f5214e79fac378a20139" }
+# Updated to match mtp-usb-embassy. Also has performance and stack size improvements.
+mctp-estack = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "32cfb14301ba52dbd634f5214e79fac378a20139" }
+mctp = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "32cfb14301ba52dbd634f5214e79fac378a20139" }
 
 [features]
 default = ["log-usbserial", "nvme-mi"]
