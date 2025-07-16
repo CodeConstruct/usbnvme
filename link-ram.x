@@ -67,7 +67,8 @@ SECTIONS
 {
   PROVIDE(_ram_start = ORIGIN(RAM));
   PROVIDE(_ram_end = ORIGIN(RAM) + LENGTH(RAM));
-  PROVIDE(_stack_start = _ram_end);
+  /* Put the stack the start of RAM, so it'll fault if it runs out of space */
+  PROVIDE(_stack_start = _ram_start + STACK_SIZE);
 
   /* ## Sections in RAM */
   /* ### Vector table */
@@ -132,6 +133,7 @@ SECTIONS
   .data : ALIGN(4)
   {
     . = ALIGN(4);
+    . = _stack_start;
     __sdata = .;
     __edata = .; /* RAM: By setting __sdata=__edata cortex-m-rt has to copy 0 bytes as .data is already in RAM */
 

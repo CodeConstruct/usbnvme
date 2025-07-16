@@ -18,3 +18,5 @@ MEMORY
     /* non-ECC. Used by bootloader. */
     SRAM2 : ORIGIN = 0x24020000, LENGTH =  128K
 }
+
+STACK_SIZE = 64K;
