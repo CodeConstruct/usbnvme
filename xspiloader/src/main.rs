@@ -29,6 +29,10 @@ use panic_probe as _;
 
 const FLASH_SIZE: usize = 32 * 1024 * 1024;
 
+/* Set ITCM/SRAM1 split to 192/0kB, DTCM/SRAM3 to 128/64kB */
+const ITCM_SPLIT: TCMSplit = TCMSplit::Tcm192;
+const DTCM_SPLIT: TCMSplit = TCMSplit::Tcm128;
+
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     rtt_target::rtt_init_log!();
@@ -46,8 +50,7 @@ async fn main(_spawner: Spawner) {
     // Initialize peripherals
     let p = embassy_stm32::init(config);
 
-    /* Set ITCM/SRAM1 split to 192/0kB, DTCM/SRAM3 to 64/128kB */
-    set_tcm_split(TCMSplit::Tcm192, TCMSplit::Tcm64);
+    set_tcm_split(ITCM_SPLIT, DTCM_SPLIT);
 
     let qspi_config = embassy_stm32::xspi::Config {
         fifo_threshold: FIFOThresholdLevel::_4Bytes,
@@ -112,15 +115,25 @@ async fn main(_spawner: Spawner) {
 
 /// `TCM` gets this much memory, the `SRAM` gets the rest.
 #[allow(unused)]
+#[derive(Debug, Clone, Copy)]
 enum TCMSplit {
     Tcm64 = 0b000,
     Tcm128 = 0b001,
     Tcm192 = 0b010,
 }
 
+impl TCMSplit {
+    /// Size in bytes
+    fn size(&self) -> usize {
+        0x10000 * (*self as usize + 1)
+    }
+}
+
 /// Set persistent ITCM/SRAM1 and DTCM/SRAM3 split.
 fn set_tcm_split(itcm: TCMSplit, dtcm: TCMSplit) {
     let regs = pac::FLASH;
+
+    info!("Using TCM split ITCM {itcm:?} DTCM {dtcm:?}");
 
     let itcm = itcm as u8;
     let dtcm = dtcm as u8;
@@ -131,7 +144,7 @@ fn set_tcm_split(itcm: TCMSplit, dtcm: TCMSplit) {
         return;
     }
 
-    info!("Programming TCM split ITCM {itcm} DTCM {dtcm}");
+    info!("Programming TCM split");
 
     // Unlock FLASH_OPTCR if necessary.
     // Unlocking twice would cause a busfault.
@@ -167,18 +180,25 @@ fn set_tcm_split(itcm: TCMSplit, dtcm: TCMSplit) {
 
 /// Check whether a load address is valid
 fn valid_dest(start: u32, length: u32) -> bool {
+    let dtcm_size = DTCM_SPLIT.size() as u32;
+    let itcm_size = ITCM_SPLIT.size() as u32;
+    let dtcm_start = 0x2000_0000;
+    let itcm_start = 0x0000_0000;
+    // sram1 start address varies
+    let sram1_end = 0x2402_0000;
+    let sram3_start = 0x2404_0000;
     let range = [
         // ITCM/SRAM1 and DTCM/SRAM3 split is configurable, these are upper limits.
         // Can't have the full range of both at once.
 
         // ITCM
-        0x0000_0000..0x0003_0000,
+        itcm_start..(itcm_start + itcm_size),
         // SRAM1
-        0x2400_0000..0x2402_0000,
+        (sram1_end - (0x30000 - itcm_size))..sram1_end,
         // DTCM
-        0x2000_0000..0x2003_0000,
+        dtcm_start..(dtcm_start + dtcm_size),
         // SRAM3
-        0x2404_0000..0x2406_0000,
+        sram3_start..(sram3_start + (0x30000 - dtcm_size)),
         // SRAM2 is used by xspiloader itself (link-bootloader.x), so disallowed.
     ];
 
