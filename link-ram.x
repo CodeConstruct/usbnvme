@@ -125,7 +125,7 @@ SECTIONS
        section will have the correct alignment. */
     . = ALIGN(4);
     __erodata = .;
-  } > RAM
+  } > SRAM3
 
   /* ## Sections in RAM */
   /* ### .data */
