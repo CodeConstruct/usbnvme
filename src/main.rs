@@ -22,7 +22,7 @@ use embassy_time::{Duration, Instant, Timer};
 use mctp::{AsyncListener, AsyncReqChannel, AsyncRespChannel};
 use mctp::{Eid, MsgType};
 use mctp_estack::router::{
-    PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
+    PortBottom, PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
 };
 
 mod multilog;
@@ -161,14 +161,7 @@ fn main() -> ! {
     executor.run(run)
 }
 
-fn run(spawner: Spawner) {
-    let p = embassy_stm32::init(config());
-
-    let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
-
-    // MCTP over USB class device
-    let endpoints = usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5);
-
+fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
     static USB_PORT_STORAGE: StaticCell<PortStorage<4>> = StaticCell::new();
     static USB_PORT: StaticCell<PortBuilder> = StaticCell::new();
 
@@ -191,6 +184,19 @@ fn run(spawner: Spawner) {
         let stack = mctp_estack::Stack::new(Eid(0), max_mtu, now());
         Router::new(stack, ports, lookup)}
     );
+
+    (router, mctp_usb_bottom)
+}
+
+fn run(spawner: Spawner) {
+    let p = embassy_stm32::init(config());
+
+    let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
+
+    let (router, mctp_usb_bottom) = setup_mctp();
+
+    // MCTP over USB class device
+    let endpoints = usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5);
 
     #[cfg(feature = "log-usbserial")]
     let (mctpusb, usbserial) = endpoints;
