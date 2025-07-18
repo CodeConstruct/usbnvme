@@ -205,7 +205,22 @@ type WatchReceiver<T> = embassy_sync::watch::Receiver<
 >;
 type SignalCS<T> = embassy_sync::signal::Signal<CriticalSectionRawMutex, T>;
 
-fn run(spawner: Spawner) {
+fn run(low_spawner: Spawner) {
+    // Highest priority goes to the USB send task, to fill the TX buffer
+    // as quickly as possible once it becomes ready.
+    //
+    // Most other tasks run as medium.
+    //
+    // mctp-bench sender runs as low priority, so that other senders have a chance.
+    // blinking LED is also low priority.
+
+    // lower P number is higher priority (more urgent)
+    interrupt::UART5.set_priority(Priority::P6);
+    let high_spawner = EXECUTOR_HIGH.start(interrupt::UART5);
+
+    interrupt::UART4.set_priority(Priority::P7);
+    let medium_spawner = EXECUTOR_MEDIUM.start(interrupt::UART4);
+
     let p = embassy_stm32::init(config());
 
     let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
@@ -224,7 +239,7 @@ fn run(spawner: Spawner) {
 
     // MCTP over USB class device
     let endpoints =
-        usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5, &USB_NOTIFY);
+        usb::setup(low_spawner, p.USB_OTG_HS, p.PM6, p.PM5, &USB_NOTIFY);
 
     #[cfg(feature = "log-usbserial")]
     let (mctpusb, usbserial) = endpoints;
@@ -242,45 +257,30 @@ fn run(spawner: Spawner) {
     let app_loop =
         usbnvme_app_task(&USB_NOTIFY, &CONTROL_NOTIFY, peer_notify.sender());
 
-    // Highest priority goes to the USB send task, to fill the TX buffer
-    // as quickly as possible once it becomes ready.
-    //
-    // Most other tasks run as medium.
-    //
-    // mctp-bench sender runs as low priority, so that other senders have a chance.
-    // blinking LED is also low priority.
-
-    // lower P number is higher priority (more urgent)
-    interrupt::UART5.set_priority(Priority::P6);
-    let high_spawner = EXECUTOR_HIGH.start(interrupt::UART5);
-
-    interrupt::UART4.set_priority(Priority::P7);
-    let medium_spawner = EXECUTOR_MEDIUM.start(interrupt::UART4);
-
-    spawner.spawn(blink_task(led)).unwrap();
-    medium_spawner.spawn(echo).unwrap();
-    medium_spawner.spawn(timeout).unwrap();
-    medium_spawner.spawn(usb_recv_loop).unwrap();
-    medium_spawner.spawn(control).unwrap();
-    medium_spawner.spawn(app_loop).unwrap();
+    low_spawner.must_spawn(blink_task(led));
+    medium_spawner.must_spawn(echo);
+    medium_spawner.must_spawn(timeout);
+    medium_spawner.must_spawn(usb_recv_loop);
+    medium_spawner.must_spawn(control);
+    medium_spawner.must_spawn(app_loop);
     // high priority for usb send
-    high_spawner.spawn(usb_send_loop).unwrap();
+    high_spawner.must_spawn(usb_send_loop);
 
     #[cfg(feature = "nvme-mi")]
     {
         let nvmemi = nvme_mi_task(router);
-        medium_spawner.spawn(nvmemi).unwrap();
+        medium_spawner.must_spawn(nvmemi);
     }
     #[cfg(feature = "mctp-bench")]
     {
         let bench = bench_task(router, peer_notify.receiver().unwrap());
-        spawner.spawn(bench).unwrap();
+        spawner.must_spawn(bench);
     }
     #[cfg(feature = "log-usbserial")]
     {
         let (sender, _) = usbserial.split();
         let seriallog = multilog::log_usbserial_task(sender);
-        spawner.spawn(seriallog).unwrap();
+        low_spawner.must_spawn(seriallog);
     }
 }
 
