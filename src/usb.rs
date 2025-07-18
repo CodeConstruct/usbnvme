@@ -1,3 +1,5 @@
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::signal::Signal;
 // SPDX-License-Identifier: GPL-3.0-only
 /*
  * Copyright (c) 2025 Code Construct
@@ -34,6 +36,7 @@ pub(crate) fn setup(
     usb: Peri<'static, USB_OTG_HS>,
     dp: Peri<'static, impl DpPin<USB_OTG_HS>>,
     dm: Peri<'static, impl DmPin<USB_OTG_HS>>,
+    state_notify: &'static Signal<CriticalSectionRawMutex, bool>,
 ) -> Endpoints {
     let mut config = embassy_usb::Config::new(0x3834, 0x0000);
     config.manufacturer = Some("Code Construct");
@@ -90,7 +93,7 @@ pub(crate) fn setup(
     let ret = (mctp,);
 
     let usb = builder.build();
-    spawner.spawn(usb_task(usb)).unwrap();
+    spawner.spawn(usb_task(usb, state_notify)).unwrap();
 
     ret
 }
@@ -98,8 +101,14 @@ pub(crate) fn setup(
 #[embassy_executor::task]
 async fn usb_task(
     mut usb: embassy_usb::UsbDevice<'static, Driver<'static, USB_OTG_HS>>,
-) {
-    usb.run().await
+    state_notify: &'static Signal<CriticalSectionRawMutex, bool>,
+) -> ! {
+    loop {
+        usb.wait_resume().await;
+        state_notify.signal(true);
+        usb.run_until_suspend().await;
+        state_notify.signal(false);
+    }
 }
 
 #[embassy_executor::task]
@@ -110,17 +119,14 @@ pub async fn usb_recv_task(
         Driver<'static, USB_OTG_HS>,
     >,
     port: PortId,
-) {
+) -> ! {
     usb_receiver.run(router, port).await;
 }
 
 #[embassy_executor::task]
 pub async fn usb_send_task(
     mctp_usb_bottom: PortBottom<'static>,
-    usb_sender: mctp_usb_embassy::Sender<
-        'static,
-        Driver<'static, USB_OTG_HS>,
-    >,
-) {
+    usb_sender: mctp_usb_embassy::Sender<'static, Driver<'static, USB_OTG_HS>>,
+) -> ! {
     usb_sender.run(mctp_usb_bottom).await;
 }

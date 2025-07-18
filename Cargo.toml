@@ -67,10 +67,11 @@ embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "02
 embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "0290c8565e9e3443d52edb5c250a53a50f6fc2a8" }
 
 # Updated for embassy-usb api change
-mctp-usb-embassy = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "32cfb14301ba52dbd634f5214e79fac378a20139" }
+mctp-usb-embassy = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "687c620e914e9f8810ff3e353541359e042f2080" }
 # Updated to match mtp-usb-embassy. Also has performance and stack size improvements.
-mctp-estack = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "32cfb14301ba52dbd634f5214e79fac378a20139" }
-mctp = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "32cfb14301ba52dbd634f5214e79fac378a20139" }
+# Includes ControlEvent change.
+mctp-estack = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "687c620e914e9f8810ff3e353541359e042f2080" }
+mctp = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "687c620e914e9f8810ff3e353541359e042f2080" }
 
 [features]
 default = ["log-usbserial", "nvme-mi"]

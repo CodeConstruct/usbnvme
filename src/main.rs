@@ -5,22 +5,27 @@
 #![no_std]
 #![no_main]
 
+use embassy_sync::signal::Signal;
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
 use core::num::Wrapping;
 
 use heapless::Vec;
-use static_cell::StaticCell;
+use static_cell::{ConstStaticCell, StaticCell};
 
 use embassy_executor::{Executor, InterruptExecutor, Spawner};
+use embassy_futures::select::{select, Either};
 use embassy_stm32::interrupt;
 use embassy_stm32::interrupt::{InterruptExt, Priority};
 use embassy_stm32::{gpio, Config};
+use embassy_sync::watch::Watch;
 use embassy_time::{Duration, Instant, Timer};
 
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use mctp::{AsyncListener, AsyncReqChannel, AsyncRespChannel};
 use mctp::{Eid, MsgType};
+use mctp_estack::control::ControlEvent;
 use mctp_estack::router::{
     PortBottom, PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
 };
@@ -182,21 +187,44 @@ fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
     // Router+Stack is large, using init_with() is important to construct in-place
     let router = ROUTER.init_with(|| {
         let stack = mctp_estack::Stack::new(Eid(0), max_mtu, now());
-        Router::new(stack, ports, lookup)}
-    );
+        Router::new(stack, ports, lookup)
+    });
 
     (router, mctp_usb_bottom)
 }
+
+// currently 2 watchers, pldm-file and mctp-bench
+const NUM_WATCH: usize = 2;
+type WatchSender<T> =
+    embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, T, NUM_WATCH>;
+type WatchReceiver<T> = embassy_sync::watch::Receiver<
+    'static,
+    CriticalSectionRawMutex,
+    T,
+    NUM_WATCH,
+>;
+type SignalCS<T> = embassy_sync::signal::Signal<CriticalSectionRawMutex, T>;
 
 fn run(spawner: Spawner) {
     let p = embassy_stm32::init(config());
 
     let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
 
+    // Notification of the remote peer. Some(Eid) when USB link is up and bus owner
+    // is known, None otherwise.
+    static PEER_NOTIFY: ConstStaticCell<
+        Watch<CriticalSectionRawMutex, Option<Eid>, NUM_WATCH>,
+    > = ConstStaticCell::new(Watch::new_with(None));
+    let peer_notify = PEER_NOTIFY.take();
+
+    static USB_NOTIFY: SignalCS<bool> = Signal::new();
+    static CONTROL_NOTIFY: SignalCS<ControlEvent> = Signal::new();
+
     let (router, mctp_usb_bottom) = setup_mctp();
 
     // MCTP over USB class device
-    let endpoints = usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5);
+    let endpoints =
+        usb::setup(spawner, p.USB_OTG_HS, p.PM6, p.PM5, &USB_NOTIFY);
 
     #[cfg(feature = "log-usbserial")]
     let (mctpusb, usbserial) = endpoints;
@@ -207,10 +235,12 @@ fn run(spawner: Spawner) {
 
     let echo = echo_task(router);
     let timeout = timeout_task(router);
-    let control = control_task(router);
+    let control = control_task(router, &CONTROL_NOTIFY);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
     let usb_recv_loop =
         usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
+    let app_loop =
+        usbnvme_app_task(&USB_NOTIFY, &CONTROL_NOTIFY, peer_notify.sender());
 
     // Highest priority goes to the USB send task, to fill the TX buffer
     // as quickly as possible once it becomes ready.
@@ -232,6 +262,7 @@ fn run(spawner: Spawner) {
     medium_spawner.spawn(timeout).unwrap();
     medium_spawner.spawn(usb_recv_loop).unwrap();
     medium_spawner.spawn(control).unwrap();
+    medium_spawner.spawn(app_loop).unwrap();
     // high priority for usb send
     high_spawner.spawn(usb_send_loop).unwrap();
 
@@ -242,7 +273,7 @@ fn run(spawner: Spawner) {
     }
     #[cfg(feature = "mctp-bench")]
     {
-        let bench = bench_task(router);
+        let bench = bench_task(router, peer_notify.receiver().unwrap());
         spawner.spawn(bench).unwrap();
     }
     #[cfg(feature = "log-usbserial")]
@@ -250,6 +281,45 @@ fn run(spawner: Spawner) {
         let (sender, _) = usbserial.split();
         let seriallog = multilog::log_usbserial_task(sender);
         spawner.spawn(seriallog).unwrap();
+    }
+}
+
+/// Task to handle usbnvme state transitions.
+#[allow(unused)]
+#[embassy_executor::task]
+async fn usbnvme_app_task(
+    usb_state_notify: &'static SignalCS<bool>,
+    control_notify: &'static SignalCS<ControlEvent>,
+    peer_watch: WatchSender<Option<Eid>>,
+) -> ! {
+    let mut usb_state = false;
+    let mut peer_eid = None;
+    loop {
+        // Wait for either
+        // - usb up/down event
+        // - Set Endpoint ID from a bus owner.
+        match select(usb_state_notify.wait(), control_notify.wait()).await {
+            Either::First(s) => {
+                info!("USB state -> {s:?}");
+                usb_state = s;
+            }
+            Either::Second(ev) => match ev {
+                // TODO: if more event variants are added, we may need to replace Signal
+                // with a >1 sized Channel to ensure we don't lose events.
+                ControlEvent::SetEndpointId {
+                    old,
+                    new,
+                    bus_owner,
+                } => {
+                    info!("Own EID changed {old} -> {new} by bus owner {bus_owner}");
+                    peer_eid = Some(bus_owner);
+                }
+            },
+        }
+
+        let peer = if usb_state { peer_eid } else { None };
+        debug!("peer state set {peer:?}");
+        peer_watch.send(peer);
     }
 }
 
@@ -290,7 +360,10 @@ async fn timeout_task(router: &'static mctp_estack::Router<'static>) -> ! {
 }
 
 #[embassy_executor::task]
-async fn control_task(router: &'static Router<'static>) -> ! {
+async fn control_task(
+    router: &'static Router<'static>,
+    control_notify: &'static SignalCS<ControlEvent>,
+) -> ! {
     let mut l = router
         .listener(mctp::MCTP_TYPE_CONTROL)
         .expect("control listener");
@@ -311,12 +384,18 @@ async fn control_task(router: &'static Router<'static>) -> ! {
             warn!("control recv err");
             continue;
         };
-        info!("control recv len {} from eid {}", msg.len(), resp.remote_eid());
+        info!(
+            "control recv len {} from eid {}",
+            msg.len(),
+            resp.remote_eid()
+        );
 
-        let r = c.handle_async(msg, resp).await;
-
-        if let Err(e) = r {
-            warn!("control handler failure: {}", e);
+        match c.handle_async(msg, resp).await {
+            Ok(None) => (),
+            Ok(Some(ev)) => control_notify.signal(ev),
+            Err(e) => {
+                warn!("control handler error: {e}");
+            }
         }
     }
 }
@@ -366,7 +445,10 @@ async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
 /// https://github.com/CodeConstruct/mctp. Asssumes receiver EID 90.
 #[allow(unused)]
 #[embassy_executor::task]
-async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
+async fn bench_task(
+    router: &'static mctp_estack::Router<'static>,
+    mut peer: WatchReceiver<Option<Eid>>,
+) -> ! {
     debug!("mctp-bench send running");
     const VENDOR_SUBTYPE_BENCH: [u8; 3] = [0xcc, 0xde, 0xf1];
     const MAGIC: u16 = 0xbeca;
@@ -383,17 +465,35 @@ async fn bench_task(router: &'static mctp_estack::Router<'static>) -> ! {
 
     let mut counter = Wrapping(SEQ_START);
 
-    let mut req = router.req(Eid(90));
-    req.tag_noexpire().unwrap();
+    'connected: loop {
+        let eid = peer.get_and(|eid| eid.is_some()).await.unwrap();
 
-    loop {
-        buf[5..9].copy_from_slice(&counter.0.to_le_bytes());
-        counter += 1;
+        info!("mctp-bench started to EID {eid}");
+        let mut req = router.req(eid);
+        req.tag_noexpire().unwrap();
 
-        let r = req.send(mctp::MCTP_TYPE_VENDOR_PCIE, buf).await;
-        if let Err(e) = r {
-            trace!("Error! {}", e);
+        'sending: loop {
+            buf[5..9].copy_from_slice(&counter.0.to_le_bytes());
+            counter += 1;
+
+            // send() will async-block if the usb channel is unavailable.
+            // Use select() to cancel that.
+            let send = async {
+                req.send(mctp::MCTP_TYPE_VENDOR_PCIE, buf)
+                    .await
+                    .inspect_err(|e| debug!("Error! {}", e));
+            };
+
+            let stopped = peer.get_and(|new_eid| *new_eid != Some(eid));
+
+            if let Either::Second(_) = select(send, stopped).await {
+                // Break if EID changed
+                info!("mctp-bench stopped");
+                break 'sending;
+            }
         }
+
+        req.async_drop().await;
     }
 }
 
