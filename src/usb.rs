@@ -1,10 +1,8 @@
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::signal::Signal;
 // SPDX-License-Identifier: GPL-3.0-only
 /*
  * Copyright (c) 2025 Code Construct
  */
-#[allow(unused)]
+#[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 use core::fmt::Write;
@@ -12,8 +10,11 @@ use embassy_executor::Spawner;
 use embassy_stm32::peripherals::USB_OTG_HS;
 use embassy_stm32::usb::{DmPin, DpPin, Driver};
 use embassy_stm32::{bind_interrupts, usb, Peri};
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::signal::Signal;
 #[allow(unused_imports)]
-use embassy_usb::{class::cdc_acm, Builder};
+use embassy_usb::class::cdc_acm;
+use embassy_usb::Builder;
 use heapless::String;
 use mctp_estack::router::{PortBottom, PortId, Router};
 use mctp_usb_embassy::{MctpUsbClass, MCTP_USB_MAX_PACKET};
