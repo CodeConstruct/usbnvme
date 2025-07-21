@@ -274,7 +274,7 @@ fn run(low_spawner: Spawner) {
     #[cfg(feature = "mctp-bench")]
     {
         let bench = bench_task(router, peer_notify.receiver().unwrap());
-        spawner.must_spawn(bench);
+        low_spawner.must_spawn(bench);
     }
     #[cfg(feature = "log-usbserial")]
     {
