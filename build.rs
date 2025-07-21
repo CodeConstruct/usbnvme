@@ -47,5 +47,7 @@ fn git() {
     // Workaround for
     // https://github.com/rust-lang/cargo/issues/4587
     // since setting any rerun-if-changed clears the default set.
-    println!("cargo::rerun-if-changed=.");
+    println!("cargo::rerun-if-changed=src");
+    println!("cargo::rerun-if-changed=Cargo.lock");
+    println!("cargo::rerun-if-changed=Cargo.toml");
 }
