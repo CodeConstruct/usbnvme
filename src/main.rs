@@ -9,8 +9,6 @@ use embassy_sync::signal::Signal;
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
-use core::num::Wrapping;
-
 use heapless::Vec;
 use static_cell::{ConstStaticCell, StaticCell};
 
@@ -23,16 +21,19 @@ use embassy_sync::watch::Watch;
 use embassy_time::{Duration, Instant, Timer};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use mctp::{AsyncListener, AsyncReqChannel, AsyncRespChannel};
+use mctp::{AsyncListener, AsyncRespChannel};
 use mctp::{Eid, MsgType};
 use mctp_estack::control::ControlEvent;
 use mctp_estack::router::{
     PortBottom, PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
 };
 
+mod ccvendor;
 mod multilog;
 mod stmutil;
 mod usb;
+
+use ccvendor::BenchRequest;
 
 const USB_MTU: usize = 251;
 
@@ -197,12 +198,6 @@ fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
 const NUM_WATCH: usize = 2;
 type WatchSender<T> =
     embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, T, NUM_WATCH>;
-type WatchReceiver<T> = embassy_sync::watch::Receiver<
-    'static,
-    CriticalSectionRawMutex,
-    T,
-    NUM_WATCH,
->;
 type SignalCS<T> = embassy_sync::signal::Signal<CriticalSectionRawMutex, T>;
 
 fn run(low_spawner: Spawner) {
@@ -234,6 +229,7 @@ fn run(low_spawner: Spawner) {
 
     static USB_NOTIFY: SignalCS<bool> = Signal::new();
     static CONTROL_NOTIFY: SignalCS<ControlEvent> = Signal::new();
+    static BENCH_REQUEST: SignalCS<BenchRequest> = Signal::new();
 
     let (router, mctp_usb_bottom) = setup_mctp();
 
@@ -248,7 +244,7 @@ fn run(low_spawner: Spawner) {
 
     let (usb_sender, usb_receiver) = mctpusb.split();
 
-    let echo = echo_task(router);
+    let echo = echo_task(router, &BENCH_REQUEST);
     let timeout = timeout_task(router);
     let control = control_task(router, &CONTROL_NOTIFY);
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
@@ -273,7 +269,8 @@ fn run(low_spawner: Spawner) {
     }
     #[cfg(feature = "mctp-bench")]
     {
-        let bench = bench_task(router, peer_notify.receiver().unwrap());
+        let bench =
+            bench_task(router, &BENCH_REQUEST);
         low_spawner.must_spawn(bench);
     }
     #[cfg(feature = "log-usbserial")]
@@ -325,28 +322,11 @@ async fn usbnvme_app_task(
 
 #[allow(unused)]
 #[embassy_executor::task]
-async fn echo_task(router: &'static mctp_estack::Router<'static>) -> ! {
-    const VENDOR_SUBTYPE_ECHO: [u8; 3] = [0xcc, 0xde, 0xf0];
-    let mut l = router.listener(mctp::MCTP_TYPE_VENDOR_PCIE).unwrap();
-    let mut buf = [0u8; 100];
-    loop {
-        let Ok((_typ, _ic, msg, mut resp)) = l.recv(&mut buf).await else {
-            warn!("echo Bad listener recv");
-            continue;
-        };
-
-        if !msg.starts_with(&VENDOR_SUBTYPE_ECHO) {
-            warn!("echo wrong vendor subtype");
-            continue;
-        }
-
-        info!("echo msg len {} from eid {}", msg.len(), resp.remote_eid());
-        if let Err(e) = resp.send(msg).await {
-            warn!("listener reply fail {e}");
-        } else {
-            info!("replied");
-        }
-    }
+async fn echo_task(
+    router: &'static mctp_estack::Router<'static>,
+    bench_request: &'static SignalCS<BenchRequest>,
+) -> ! {
+    ccvendor::listener(router, bench_request).await
 }
 
 /// Checks timeouts in the MCTP stack.
@@ -447,52 +427,52 @@ async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
 #[embassy_executor::task]
 async fn bench_task(
     router: &'static mctp_estack::Router<'static>,
-    mut peer: WatchReceiver<Option<Eid>>,
+    bench_trigger: &'static SignalCS<BenchRequest>,
 ) -> ! {
     debug!("mctp-bench send running");
-    const VENDOR_SUBTYPE_BENCH: [u8; 3] = [0xcc, 0xde, 0xf1];
-    const MAGIC: u16 = 0xbeca;
-    const SEQ_START: u32 = u32::MAX - 5;
 
     static BUF: StaticCell<[u8; BENCH_LEN]> = StaticCell::new();
-
     let buf = BUF.init_with(|| [0u8; BENCH_LEN]);
-    for (i, b) in buf.iter_mut().enumerate() {
-        *b = (i & 0xff) as u8;
-    }
-    buf[..3].copy_from_slice(&VENDOR_SUBTYPE_BENCH);
-    buf[3..5].copy_from_slice(&MAGIC.to_le_bytes());
 
-    let mut counter = Wrapping(SEQ_START);
+    let mut bench = ccvendor::MctpBench::new(buf).unwrap();
 
-    'connected: loop {
-        let eid = peer.get_and(|eid| eid.is_some()).await.unwrap();
+    let mut next_req = None;
 
-        info!("mctp-bench started to EID {eid}");
-        let mut req = router.req(eid);
+    loop {
+        let bench_req = match next_req.take() {
+            Some(r) => r,
+            None => bench_trigger.wait().await,
+        };
+
+        let mut req = router.req(bench_req.dest);
         req.tag_noexpire().unwrap();
 
-        'sending: loop {
-            buf[5..9].copy_from_slice(&counter.0.to_le_bytes());
-            counter += 1;
-
-            // send() will async-block if the usb channel is unavailable.
-            // Use select() to cancel that.
-            let send = async {
-                req.send(mctp::MCTP_TYPE_VENDOR_PCIE, buf)
-                    .await
-                    .inspect_err(|e| debug!("Error! {}", e));
-            };
-
-            let stopped = peer.get_and(|new_eid| *new_eid != Some(eid));
-
-            if let Either::Second(_) = select(send, stopped).await {
-                // Break if EID changed
-                info!("mctp-bench stopped");
-                break 'sending;
+        info!(
+            "mctp-bench started to EID {}, {} messages, size {}",
+            bench_req.dest, bench_req.count, bench_req.len
+        );
+        let send = async {
+            if let Err(e) =
+                bench.send(&mut req, bench_req.count, bench_req.len).await
+            {
+                warn!("bench failed: {e}");
             }
-        }
+            info!(
+                "mctp-bench sent {} iterations successfully",
+                bench_req.count
+            );
+        };
 
+        // Cancel the send loop when we receive a new request.
+        let stopped = async {
+            debug_assert!(next_req.is_none());
+            next_req = Some(bench_trigger.wait().await);
+            debug!("New bench request");
+        };
+
+        select(send, stopped).await;
+
+        // required by tag_noexpire()
         req.async_drop().await;
     }
 }
