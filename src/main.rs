@@ -10,14 +10,13 @@ use embassy_sync::signal::Signal;
 use log::{debug, error, info, trace, warn};
 
 use heapless::Vec;
-use static_cell::{ConstStaticCell, StaticCell};
+use static_cell::StaticCell;
 
 use embassy_executor::{Executor, InterruptExecutor, Spawner};
 use embassy_futures::select::{select, Either};
 use embassy_stm32::interrupt;
 use embassy_stm32::interrupt::{InterruptExt, Priority};
 use embassy_stm32::{gpio, Config};
-use embassy_sync::watch::Watch;
 use embassy_time::{Duration, Instant, Timer};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -30,6 +29,8 @@ use mctp_estack::router::{
 
 mod ccvendor;
 mod multilog;
+#[cfg(feature = "pldm-file")]
+mod pldm;
 mod stmutil;
 mod usb;
 
@@ -194,10 +195,6 @@ fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
     (router, mctp_usb_bottom)
 }
 
-// currently 2 watchers, pldm-file and mctp-bench
-const NUM_WATCH: usize = 2;
-type WatchSender<T> =
-    embassy_sync::watch::Sender<'static, CriticalSectionRawMutex, T, NUM_WATCH>;
 type SignalCS<T> = embassy_sync::signal::Signal<CriticalSectionRawMutex, T>;
 
 fn run(low_spawner: Spawner) {
@@ -223,11 +220,7 @@ fn run(low_spawner: Spawner) {
     /// Notification of the remote peer.
     ///
     /// Set on each Set Endpoint ID call. Initially None.
-    static PEER_NOTIFY: ConstStaticCell<
-        Watch<CriticalSectionRawMutex, Option<Eid>, NUM_WATCH>,
-    > = ConstStaticCell::new(Watch::new_with(None));
-    let peer_notify = PEER_NOTIFY.take();
-
+    static PEER_NOTIFY: SignalCS<Eid> = Signal::new();
     static USB_NOTIFY: SignalCS<bool> = Signal::new();
     static CONTROL_NOTIFY: SignalCS<ControlEvent> = Signal::new();
     static BENCH_REQUEST: SignalCS<BenchRequest> = Signal::new();
@@ -251,8 +244,7 @@ fn run(low_spawner: Spawner) {
     let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
     let usb_recv_loop =
         usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
-    let app_loop =
-        usbnvme_app_task(&USB_NOTIFY, &CONTROL_NOTIFY, peer_notify.sender());
+    let app_loop = usbnvme_app_task(&USB_NOTIFY, &CONTROL_NOTIFY, &PEER_NOTIFY);
 
     low_spawner.must_spawn(blink_task(led));
     medium_spawner.must_spawn(echo);
@@ -268,10 +260,14 @@ fn run(low_spawner: Spawner) {
         let nvmemi = nvme_mi_task(router);
         medium_spawner.must_spawn(nvmemi);
     }
+    #[cfg(feature = "pldm-file")]
+    {
+        let pldm_file = pldm::pldm_file_task(router, &PEER_NOTIFY);
+        medium_spawner.must_spawn(pldm_file);
+    }
     #[cfg(feature = "mctp-bench")]
     {
-        let bench =
-            bench_task(router, &BENCH_REQUEST);
+        let bench = bench_task(router, &BENCH_REQUEST);
         low_spawner.must_spawn(bench);
     }
     #[cfg(feature = "log-usbserial")]
@@ -288,7 +284,7 @@ fn run(low_spawner: Spawner) {
 async fn usbnvme_app_task(
     usb_state_notify: &'static SignalCS<bool>,
     control_notify: &'static SignalCS<ControlEvent>,
-    peer_watch: WatchSender<Option<Eid>>,
+    peer_watch: &'static SignalCS<Eid>,
 ) -> ! {
     let mut usb_state = false;
     loop {
@@ -309,7 +305,7 @@ async fn usbnvme_app_task(
                     bus_owner,
                 } => {
                     info!("Own EID changed {old} -> {new} by bus owner {bus_owner}");
-                    peer_watch.send(Some(bus_owner));
+                    peer_watch.signal(bus_owner);
                 }
             },
         }
