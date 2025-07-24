@@ -220,8 +220,9 @@ fn run(low_spawner: Spawner) {
 
     let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
 
-    // Notification of the remote peer. Some(Eid) when USB link is up and bus owner
-    // is known, None otherwise.
+    /// Notification of the remote peer.
+    ///
+    /// Set on each Set Endpoint ID call. Initially None.
     static PEER_NOTIFY: ConstStaticCell<
         Watch<CriticalSectionRawMutex, Option<Eid>, NUM_WATCH>,
     > = ConstStaticCell::new(Watch::new_with(None));
@@ -290,7 +291,6 @@ async fn usbnvme_app_task(
     peer_watch: WatchSender<Option<Eid>>,
 ) -> ! {
     let mut usb_state = false;
-    let mut peer_eid = None;
     loop {
         // Wait for either
         // - usb up/down event
@@ -309,14 +309,10 @@ async fn usbnvme_app_task(
                     bus_owner,
                 } => {
                     info!("Own EID changed {old} -> {new} by bus owner {bus_owner}");
-                    peer_eid = Some(bus_owner);
+                    peer_watch.send(Some(bus_owner));
                 }
             },
         }
-
-        let peer = if usb_state { peer_eid } else { None };
-        debug!("peer state set {peer:?}");
-        peer_watch.send(peer);
     }
 }
 
