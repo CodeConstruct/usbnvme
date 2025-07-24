@@ -100,7 +100,7 @@ enum LostLine {
 struct MultiLog {
     serial_backlog: Channel<RawMutex, Line, SERIAL_BACKLOG>,
     serial_lost_lines: BlockingMutex<RawMutex, Cell<LostLine>>,
-    psp_top: AtomicU32,
+    msp_top: AtomicU32,
 }
 
 impl MultiLog {
@@ -108,12 +108,12 @@ impl MultiLog {
         Self {
             serial_backlog: Channel::new(),
             serial_lost_lines: BlockingMutex::new(Cell::new(LostLine::No)),
-            psp_top: AtomicU32::new(0),
+            msp_top: AtomicU32::new(0),
         }
     }
 
     fn start(&self) {
-        self.psp_top
+        self.msp_top
             .store(cortex_m::register::msp::read(), Ordering::Relaxed);
         // RTT default is non-blocking (drop on full), 1024 byte buffer
         rtt_init_print!();
@@ -160,10 +160,9 @@ impl Log for MultiLog {
         }
 
         let now = now();
-        // TODO: use format_args after rust 1.89
         if LOG_STACK_SIZE {
-            let psp = cortex_m::register::msp::read();
-            let stack = self.psp_top.load(Ordering::Relaxed) - psp;
+            let stack = self.msp_top.load(Ordering::Relaxed)
+                - cortex_m::register::msp::read();
             rprintln!(
                 "{:10} {:<5} {:08x} {}",
                 now,
