@@ -34,8 +34,8 @@ embassy-sync = { workspace = true }
 embassy-usb = { workspace = true }
 embassy-usb-driver = { workspace = true }
 embassy-futures = { workspace = true }
-embassy-stm32 = { version = "0.2", features = ["time-driver-any", "stm32h7s3l8", "log"] }
-embassy-usb-synopsys-otg = { version = "0.2", features = ["log"] }
+embassy-stm32 = { version = "0.2", features = ["time-driver-any", "stm32h7s3l8"] }
+embassy-usb-synopsys-otg = { version = "0.2" }
 embedded-hal-async = { workspace = true }
 heapless = { workspace = true }
 static_cell = "2.1"
