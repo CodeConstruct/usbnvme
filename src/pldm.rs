@@ -7,10 +7,13 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use core::future::Future;
+
 use pldm_file::PLDM_TYPE_FILE_TRANSFER;
 use pldm_platform::proto::PdrRecord;
 
 use embassy_futures::select::select;
+use embassy_time::Duration;
 use mctp::{AsyncReqChannel, Eid};
 use mctp_estack::Router;
 use pldm::control::{requester as ctrq, PLDM_TYPE_CONTROL};
@@ -18,6 +21,27 @@ use pldm::{proto_error, PldmError, PldmResult};
 use pldm_platform::requester as platrq;
 
 use crate::SignalCS;
+
+pub struct PldmTimedout;
+impl From<PldmTimedout> for PldmError {
+    fn from(_: PldmTimedout) -> Self {
+        proto_error!("Timed out")
+    }
+}
+
+pub trait PldmTimeout: Future + Sized {
+    /// Run a future with a timeout.
+    async fn with_timeout(
+        self,
+        timeout: Duration,
+    ) -> Result<Self::Output, PldmTimedout> {
+        embassy_time::with_timeout(timeout, self)
+            .await
+            .map_err(|_| PldmTimedout)
+    }
+}
+
+impl<F: Future> PldmTimeout for F {}
 
 #[embassy_executor::task]
 pub(crate) async fn pldm_file_task(
@@ -113,83 +137,104 @@ async fn pldm_run_file(
     const PLDM_BASE_VERSION: u32 = 0xf1f1f000;
     const PLDM_FILE_VERSION: u32 = 0xf1f0f000;
 
+    const SHORT_TIMEOUT: Duration = Duration::from_secs(4);
+    const READ_TIMEOUT: Duration = Duration::from_secs(120);
+
     let mut comm = router.req(eid);
     let comm = &mut comm;
 
-    // Get PLDM Versions
-    let _ = check_version(comm, PLDM_TYPE_CONTROL, PLDM_BASE_VERSION).await;
-    let _ = check_version(
-        comm,
-        pldm_file::PLDM_TYPE_FILE_TRANSFER,
-        PLDM_FILE_VERSION,
-    )
-    .await;
+    // Set a fixed timeout for the first sequence
+    let first_sequence = async {
+        // Get PLDM Versions
+        let _ = check_version(comm, PLDM_TYPE_CONTROL, PLDM_BASE_VERSION).await;
+        let _ = check_version(
+            comm,
+            pldm_file::PLDM_TYPE_FILE_TRANSFER,
+            PLDM_FILE_VERSION,
+        )
+        .await;
 
-    // Get PLDM Types
-    let mut buf = [0u8; 10];
-    let types = ctrq::get_pldm_types(comm, &mut buf)
-        .await
-        .inspect_err(|e| warn!("Error from Get PLDM Types: {e}"))?;
-    info!("PLDM types: {types:?}");
-    if !(types.contains(&PLDM_TYPE_CONTROL)
-        && types.contains(&PLDM_TYPE_FILE_TRANSFER))
-    {
-        warn!("Missing expected types");
-    }
-
-    // Get Commands type 0
-    let required = [
-        pldm::control::Cmd::NegotiateTransferParameters as u8,
-        pldm::control::Cmd::MultipartReceive as u8,
-    ];
-    let _ =
-        check_commands(comm, PLDM_TYPE_CONTROL, PLDM_BASE_VERSION, &required);
-
-    // Get Commands type 7
-    let required = [
-        pldm_file::proto::Cmd::DfOpen as u8,
-        pldm_file::proto::Cmd::DfClose as u8,
-        pldm_file::proto::Cmd::DfRead as u8,
-    ];
-    let _ = check_commands(
-        comm,
-        PLDM_TYPE_FILE_TRANSFER,
-        PLDM_FILE_VERSION,
-        &required,
-    );
-
-    // PDR Repository Info
-    let pdr_info = platrq::get_pdr_repository_info(comm)
-        .await
-        .inspect_err(|e| warn!("Error from Get PDR Repository Info: {e}"))?;
-
-    info!("PDR Repository Info: {:#?}", pdr_info);
-
-    // File Descriptor PDR
-    let pdr_record = 1;
-    let pdr = platrq::get_pdr(comm, pdr_record)
-        .await
-        .inspect_err(|e| warn!("Error from Get PDR: {e}"))?;
-
-    let PdrRecord::FileDescriptor(filedesc) = pdr else {
-        return Err(proto_error!("Not a file descriptor PDR: {pdr:#x?}"));
-    };
-    info!("PDR: {filedesc:#x?}");
-    // TODO: check PDR is as-expected
-
-    // NegotiateTransferParameters
-    let req_types = [pldm_file::PLDM_TYPE_FILE_TRANSFER];
-    let (size, neg_types) =
-        ctrq::negotiate_transfer_parameters(comm, &req_types, &mut buf, 1024)
+        // Get PLDM Types
+        let mut buf = [0u8; 10];
+        let types = ctrq::get_pldm_types(comm, &mut buf)
             .await
-            .inspect_err(|e| warn!("Error from Negotiate: {e}"))?;
-    info!("Negotiated multipart size {size} for types {neg_types:?}");
+            .inspect_err(|e| warn!("Error from Get PLDM Types: {e}"))?;
+        info!("PLDM types: {types:?}");
+        if !(types.contains(&PLDM_TYPE_CONTROL)
+            && types.contains(&PLDM_TYPE_FILE_TRANSFER))
+        {
+            warn!("Missing expected types");
+        }
+
+        // Get Commands type 0
+        let required = [
+            pldm::control::Cmd::NegotiateTransferParameters as u8,
+            pldm::control::Cmd::MultipartReceive as u8,
+        ];
+        let _ = check_commands(
+            comm,
+            PLDM_TYPE_CONTROL,
+            PLDM_BASE_VERSION,
+            &required,
+        );
+
+        // Get Commands type 7
+        let required = [
+            pldm_file::proto::Cmd::DfOpen as u8,
+            pldm_file::proto::Cmd::DfClose as u8,
+            pldm_file::proto::Cmd::DfRead as u8,
+        ];
+        let _ = check_commands(
+            comm,
+            PLDM_TYPE_FILE_TRANSFER,
+            PLDM_FILE_VERSION,
+            &required,
+        );
+
+        // PDR Repository Info
+        let pdr_info = platrq::get_pdr_repository_info(comm)
+            .await
+            .inspect_err(|e| {
+                warn!("Error from Get PDR Repository Info: {e}")
+            })?;
+
+        info!("PDR Repository Info: {pdr_info:?}");
+
+        // File Descriptor PDR
+        let pdr_record = 1;
+        let pdr = platrq::get_pdr(comm, pdr_record)
+            .await
+            .inspect_err(|e| warn!("Error from Get PDR: {e}"))?;
+
+        let PdrRecord::FileDescriptor(filedesc) = pdr else {
+            return Err(proto_error!("Not a file descriptor PDR: {pdr:x?}"));
+        };
+        info!("PDR: {filedesc:x?}");
+        // TODO: check PDR is as-expected
+
+        // NegotiateTransferParameters
+        let req_types = [pldm_file::PLDM_TYPE_FILE_TRANSFER];
+        let (size, neg_types) = ctrq::negotiate_transfer_parameters(
+            comm, &req_types, &mut buf, 1024,
+        )
+        .await
+        .inspect_err(|e| warn!("Error from Negotiate: {e}"))?;
+        info!("Negotiated multipart size {size} for types {neg_types:?}");
+        Ok(filedesc)
+    };
+
+    // Whole first sequence runs with one timeout
+    let filedesc = first_sequence
+        .with_timeout(SHORT_TIMEOUT)
+        .await
+        .inspect_err(|_| warn!("PLDM file transfer setup timed out"))??;
 
     // File Open
     let id = FileIdentifier(filedesc.file_identifier);
     let attrs = DfOpenAttributes::empty();
     let fd = df_open(comm, id, attrs)
-        .await
+        .with_timeout(SHORT_TIMEOUT)
+        .await?
         .inspect_err(|e| warn!("df_open failed {e}"))?;
 
     // File Read
@@ -201,7 +246,8 @@ async fn pldm_run_file(
         count += b.len();
         Ok(())
     })
-    .await
+    .with_timeout(READ_TIMEOUT)
+    .await?
     .inspect_err(|e| warn!("df_read failed {e}"))?;
 
     let time = start.elapsed().as_millis() as usize;
@@ -214,7 +260,8 @@ async fn pldm_run_file(
     // File Close
     let attrs = DfCloseAttributes::empty();
     df_close(comm, fd, attrs)
-        .await
+        .with_timeout(SHORT_TIMEOUT)
+        .await?
         .inspect_err(|e| warn!("df_close failed {e}"))?;
 
     Ok(())
