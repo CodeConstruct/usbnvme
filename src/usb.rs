@@ -16,7 +16,7 @@ use embassy_sync::signal::Signal;
 use embassy_usb::class::cdc_acm;
 use embassy_usb::Builder;
 use heapless::String;
-use mctp_estack::router::{PortBottom, PortId, Router};
+use mctp_estack::router::{Port, PortId, Router};
 use mctp_usb_embassy::{MctpUsbClass, MCTP_USB_MAX_PACKET};
 use static_cell::StaticCell;
 
@@ -126,7 +126,7 @@ pub async fn usb_recv_task(
 
 #[embassy_executor::task]
 pub async fn usb_send_task(
-    mctp_usb_bottom: PortBottom<'static>,
+    mctp_usb_bottom: Port<'static>,
     usb_sender: mctp_usb_embassy::Sender<'static, Driver<'static, USB_OTG_HS>>,
 ) -> ! {
     usb_sender.run(mctp_usb_bottom).await;

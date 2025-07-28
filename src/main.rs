@@ -26,9 +26,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use mctp::{AsyncListener, AsyncRespChannel};
 use mctp::{Eid, MsgType};
 use mctp_estack::control::ControlEvent;
-use mctp_estack::router::{
-    PortBottom, PortBuilder, PortId, PortLookup, PortStorage, PortTop, Router,
-};
+use mctp_estack::router::{Port, PortId, PortLookup, PortTop, Router};
 
 mod ccvendor;
 mod multilog;
@@ -125,16 +123,16 @@ impl Routes {
 
 impl PortLookup for Routes {
     fn by_eid(
-        &mut self,
+        &self,
         _eid: Eid,
         src_port: Option<PortId>,
-    ) -> Option<PortId> {
+    ) -> (Option<PortId>, Option<usize>) {
         if src_port == Some(Self::USB_INDEX) {
             // Avoid routing loops
-            return None;
+            return (None, None);
         }
         // All packets out USB
-        Some(Self::USB_INDEX)
+        (Some(Self::USB_INDEX), Some(USB_MTU))
     }
 }
 
@@ -171,31 +169,23 @@ fn main() -> ! {
     executor.run(|spawner| run(spawner, logger))
 }
 
-fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
-    static USB_PORT_STORAGE: StaticCell<PortStorage<4>> = StaticCell::new();
-    static USB_PORT: StaticCell<PortBuilder> = StaticCell::new();
-
-    static PORTS: StaticCell<[PortTop; 1]> = StaticCell::new();
+fn setup_mctp() -> (&'static Router<'static>, Port<'static>) {
+    static USB_TOP: StaticCell<PortTop> = StaticCell::new();
     static LOOKUP: StaticCell<Routes> = StaticCell::new();
     static ROUTER: StaticCell<Router> = StaticCell::new();
 
     // USB port for the MCTP router
-    let usb_port_storage = USB_PORT_STORAGE.init_with(PortStorage::new);
-    let usb_port = USB_PORT.init_with(|| PortBuilder::new(usb_port_storage));
-    let (mctp_usb_top, mctp_usb_bottom) = usb_port.build(USB_MTU).unwrap();
-
-    let ports = PORTS.init([mctp_usb_top]);
+    let usb_top = USB_TOP.init_with(PortTop::new);
 
     // MCTP stack
-    let max_mtu = USB_MTU;
     let lookup = LOOKUP.init(Routes {});
-    // Router+Stack is large, using init_with() is important to construct in-place
-    let router = ROUTER.init_with(|| {
-        let stack = mctp_estack::Stack::new(Eid(0), max_mtu, now());
-        Router::new(stack, ports, lookup)
-    });
+    // Router is large, using init_with() is important to construct in-place
+    let router = ROUTER.init_with(|| Router::new(Eid(0), lookup, now()));
+    let usb_id = router.add_port(usb_top).unwrap();
+    debug_assert_eq!(usb_id, Routes::USB_INDEX);
+    let usb_port = router.port(Routes::USB_INDEX).unwrap();
 
-    (router, mctp_usb_bottom)
+    (router, usb_port)
 }
 
 type SignalCS<T> = embassy_sync::signal::Signal<CriticalSectionRawMutex, T>;
@@ -484,9 +474,6 @@ async fn bench_task(
         };
 
         select(send, stopped).await;
-
-        // required by tag_noexpire()
-        req.async_drop().await;
     }
 }
 

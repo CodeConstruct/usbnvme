@@ -791,12 +791,12 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 [[package]]
 name = "mctp"
 version = "0.2.0"
-source = "git+https://github.com/CodeConstruct/mctp-rs?rev=8051f2ee30e83efea8cadc1cfdc6d976dba41ed3#8051f2ee30e83efea8cadc1cfdc6d976dba41ed3"
+source = "git+https://github.com/CodeConstruct/mctp-rs?rev=88c9eba20c6ac62025438bb7ca9b9578c9f2679c#88c9eba20c6ac62025438bb7ca9b9578c9f2679c"
 
 [[package]]
 name = "mctp-estack"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/mctp-rs?rev=8051f2ee30e83efea8cadc1cfdc6d976dba41ed3#8051f2ee30e83efea8cadc1cfdc6d976dba41ed3"
+source = "git+https://github.com/CodeConstruct/mctp-rs?rev=88c9eba20c6ac62025438bb7ca9b9578c9f2679c#88c9eba20c6ac62025438bb7ca9b9578c9f2679c"
 dependencies = [
  "crc",
  "embassy-sync 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -811,7 +811,7 @@ dependencies = [
 [[package]]
 name = "mctp-usb-embassy"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/mctp-rs?rev=8051f2ee30e83efea8cadc1cfdc6d976dba41ed3#8051f2ee30e83efea8cadc1cfdc6d976dba41ed3"
+source = "git+https://github.com/CodeConstruct/mctp-rs?rev=88c9eba20c6ac62025438bb7ca9b9578c9f2679c#88c9eba20c6ac62025438bb7ca9b9578c9f2679c"
 dependencies = [
  "embassy-futures 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-usb",
@@ -929,7 +929,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "pldm"
 version = "0.2.0"
-source = "git+https://github.com/CodeConstruct/mctp-rs?rev=8051f2ee30e83efea8cadc1cfdc6d976dba41ed3#8051f2ee30e83efea8cadc1cfdc6d976dba41ed3"
+source = "git+https://github.com/CodeConstruct/mctp-rs?rev=88c9eba20c6ac62025438bb7ca9b9578c9f2679c#88c9eba20c6ac62025438bb7ca9b9578c9f2679c"
 dependencies = [
  "crc",
  "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
@@ -943,7 +943,7 @@ dependencies = [
 [[package]]
 name = "pldm-file"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/mctp-rs?rev=8051f2ee30e83efea8cadc1cfdc6d976dba41ed3#8051f2ee30e83efea8cadc1cfdc6d976dba41ed3"
+source = "git+https://github.com/CodeConstruct/mctp-rs?rev=88c9eba20c6ac62025438bb7ca9b9578c9f2679c#88c9eba20c6ac62025438bb7ca9b9578c9f2679c"
 dependencies = [
  "crc",
  "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
@@ -958,7 +958,7 @@ dependencies = [
 [[package]]
 name = "pldm-platform"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/mctp-rs?rev=8051f2ee30e83efea8cadc1cfdc6d976dba41ed3#8051f2ee30e83efea8cadc1cfdc6d976dba41ed3"
+source = "git+https://github.com/CodeConstruct/mctp-rs?rev=88c9eba20c6ac62025438bb7ca9b9578c9f2679c#88c9eba20c6ac62025438bb7ca9b9578c9f2679c"
 dependencies = [
  "chrono",
  "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
