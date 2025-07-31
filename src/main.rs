@@ -375,13 +375,13 @@ async fn control_task(
 #[cfg(feature = "nvme-mi")]
 #[embassy_executor::task]
 async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
-    use nvme_mi_dev::nvme::*;
+    use nvme_mi_dev::*;
     let mut l = router
         .listener(mctp::MCTP_TYPE_NVME)
         .expect("NVME-MI listener");
 
     let mut subsys = Subsystem::new(SubsystemInfo::environment());
-    let ppid = subsys.add_port(PortType::PCIe(PCIePort::new())).unwrap();
+    let ppid = subsys.add_port(PortType::Pcie(PciePort::new())).unwrap();
     let ctrlid0 = subsys.add_controller(ppid).unwrap();
     let _ctrlid1 = subsys.add_controller(ppid).unwrap();
 
@@ -407,7 +407,24 @@ async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
         };
 
         debug!("Handling NVMe-MI message: {msg:x?}");
-        mep.handle_async(&mut subsys, msg, ic, resp).await;
+        mep.handle_async(&mut subsys, msg, ic, resp, async |cmd| match cmd {
+            CommandEffect::SetMtu { port_id, mtus } => {
+                if port_id == ppid {
+                    // TODO: implement once PortLookup::by_eid trait takes a
+                    // non-mut reference.
+                    warn!("NVMe-MI: Set MTU Port ID {port_id:?} MTU {mtus}, not currently handled");
+                    Err(CommandEffectError::Unsupported)
+                } else {
+                    warn!("NVMe-MI: Set MTU bad Port ID {port_id:?}");
+                    Err(CommandEffectError::InternalError)
+                }
+            }
+            CommandEffect::SetSmbusFreq { .. } => {
+                info!("NVMe-MI: Ignoring Set SMBUS Frequency");
+                Err(CommandEffectError::Unsupported)
+            }
+        })
+        .await;
     }
 }
 

@@ -196,7 +196,17 @@ name = "deku"
 version = "0.19.1"
 source = "git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3#d68915c71e1b3ac76726328803eeffc773fb9871"
 dependencies = [
- "deku_derive",
+ "deku_derive 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
+ "no_std_io2",
+ "rustversion",
+]
+
+[[package]]
+name = "deku"
+version = "0.19.1"
+source = "git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6#e1e2eb703ea7f8d68fb7ff01140ca16e021cb11c"
+dependencies = [
+ "deku_derive 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6)",
  "no_std_io2",
  "rustversion",
 ]
@@ -205,6 +215,17 @@ dependencies = [
 name = "deku_derive"
 version = "0.19.1"
 source = "git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3#d68915c71e1b3ac76726328803eeffc773fb9871"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "deku_derive"
+version = "0.19.1"
+source = "git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6#e1e2eb703ea7f8d68fb7ff01140ca16e021cb11c"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -655,6 +676,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "flagset"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7ac824320a75a52197e8f2d787f6a38b6718bb6897a35142d749af3c0e8f4fe"
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -845,16 +872,15 @@ dependencies = [
 [[package]]
 name = "nvme-mi-dev"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/nvme-mi-dev#5c6d7255b72d6b289396b983c87d518c90e1cf40"
+source = "git+https://github.com/CodeConstruct/nvme-mi-dev#6182fd25b196681898d05e644388f17d005adcbc"
 dependencies = [
  "crc",
- "deku",
+ "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6)",
+ "flagset",
  "heapless",
  "hmac",
  "log",
  "mctp",
- "num-derive",
- "num-traits",
  "sha2",
  "uuid",
 ]
@@ -897,7 +923,7 @@ version = "0.2.0"
 source = "git+https://github.com/CodeConstruct/mctp-rs?rev=851360ed19ef78f2e7672daa90900cb4f38ad0b6#851360ed19ef78f2e7672daa90900cb4f38ad0b6"
 dependencies = [
  "crc",
- "deku",
+ "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
  "heapless",
  "log",
  "mctp",
@@ -911,7 +937,7 @@ version = "0.1.0"
 source = "git+https://github.com/CodeConstruct/mctp-rs?rev=851360ed19ef78f2e7672daa90900cb4f38ad0b6#851360ed19ef78f2e7672daa90900cb4f38ad0b6"
 dependencies = [
  "crc",
- "deku",
+ "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
  "enumset",
  "log",
  "mctp",
@@ -925,7 +951,7 @@ name = "pldm-platform"
 version = "0.1.0"
 source = "git+https://github.com/CodeConstruct/mctp-rs?rev=851360ed19ef78f2e7672daa90900cb4f38ad0b6#851360ed19ef78f2e7672daa90900cb4f38ad0b6"
 dependencies = [
- "deku",
+ "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
  "heapless",
  "log",
  "mctp",
@@ -1150,7 +1176,7 @@ version = "0.2.0"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
- "deku",
+ "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-3)",
  "embassy-executor",
  "embassy-futures 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-stm32 0.2.0 (git+https://github.com/embassy-rs/embassy/?rev=0290c8565e9e3443d52edb5c250a53a50f6fc2a8)",
