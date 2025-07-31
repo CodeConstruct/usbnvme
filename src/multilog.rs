@@ -115,8 +115,7 @@ impl MultiLog {
     fn start(&self) {
         self.msp_top
             .store(cortex_m::register::msp::read(), Ordering::Relaxed);
-        // RTT default is non-blocking (drop on full), 1024 byte buffer
-        rtt_init_print!();
+        rtt_init_print!(rtt_target::ChannelMode::NoBlockTrim, 4096);
     }
 
     fn log_usbserial(&self, record: &Record, msg: Line) {
