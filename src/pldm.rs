@@ -200,14 +200,25 @@ async fn pldm_run_file(
 
         info!("PDR Repository Info: {pdr_info:?}");
 
-        // File Descriptor PDR
-        let pdr_record = 1;
-        let pdr = platrq::get_pdr(comm, pdr_record)
-            .await
-            .inspect_err(|e| warn!("Error from Get PDR: {e}"))?;
+        // Find a File Descriptor PDR
+        let mut p = platrq::get_pdr(comm);
+        let mut filedesc = None;
+        while let Some(r) = p.next().await {
+            match r {
+                Ok(pdr) => {
+                    if let PdrRecord::FileDescriptor(fd) = pdr {
+                        filedesc = Some(fd);
+                        break;
+                    } else {
+                        info!("Skipping non-file PDR type {}", pdr.pdr_type());
+                    }
+                }
+                Err(e) => info!("Error fetching PDR: {e}, skipping"),
+            }
+        }
 
-        let PdrRecord::FileDescriptor(filedesc) = pdr else {
-            return Err(proto_error!("Not a file descriptor PDR: {pdr:#?}"));
+        let Some(filedesc) = filedesc else {
+            return Err(proto_error!("No File Descriptor PDR found"));
         };
         info!("PDR: {filedesc:?}");
         // TODO: check PDR is as-expected
