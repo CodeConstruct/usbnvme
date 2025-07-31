@@ -9,6 +9,8 @@ use log::{debug, error, info, trace, warn};
 
 use core::future::Future;
 
+use sha2::{Digest, Sha256};
+
 use pldm_file::PLDM_TYPE_FILE_TRANSFER;
 use pldm_platform::proto::PdrRecord;
 
@@ -124,6 +126,17 @@ async fn check_commands(
         }
     };
     r.map(|_| ())
+}
+
+struct Hex<'a>(&'a [u8]);
+
+impl core::fmt::Display for Hex<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for c in self.0 {
+            write!(f, "{:02x}", c)?;
+        }
+        Ok(())
+    }
 }
 
 async fn pldm_run_file(
@@ -252,9 +265,11 @@ async fn pldm_run_file(
     info!("Reading entire file ({} bytes)...", filedesc.file_max_size);
     let start = embassy_time::Instant::now();
 
+    let mut hash = Sha256::new();
     let mut count = 0;
     df_read_with(comm, fd, 0, filedesc.file_max_size as usize, |b| {
         count += b.len();
+        hash.update(b);
         Ok(())
     })
     .with_timeout(READ_TIMEOUT)
@@ -263,10 +278,8 @@ async fn pldm_run_file(
 
     let time = start.elapsed().as_millis() as usize;
     let kbyte_rate = count / time;
-    info!(
-        "Received total {} bytes, {} ms, {} kB/s",
-        count, time, kbyte_rate
-    );
+    info!("Transfer complete. total {count} bytes, {time} ms, {kbyte_rate} kB/s, sha256 {}",
+        Hex(&hash.finalize()));
 
     // File Close
     let attrs = DfCloseAttributes::empty();
