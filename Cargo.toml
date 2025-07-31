@@ -75,16 +75,16 @@ embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "0290
 
 
 # Updated for embassy-usb api change
-mctp-usb-embassy = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "851360ed19ef78f2e7672daa90900cb4f38ad0b6" }
+mctp-usb-embassy = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "be058dc5cd737799a419f7edd0e2635aae990948" }
 # Updated to match mtp-usb-embassy. Also has performance and stack size improvements.
 # Includes ControlEvent change.
-mctp-estack = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "851360ed19ef78f2e7672daa90900cb4f38ad0b6" }
-mctp = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "851360ed19ef78f2e7672daa90900cb4f38ad0b6" }
+mctp-estack = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "be058dc5cd737799a419f7edd0e2635aae990948" }
+mctp = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "be058dc5cd737799a419f7edd0e2635aae990948" }
 
 # pldm-file and pldm-platform are not yet published
-pldm = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "851360ed19ef78f2e7672daa90900cb4f38ad0b6" }
-pldm-file = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "851360ed19ef78f2e7672daa90900cb4f38ad0b6" }
-pldm-platform = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "851360ed19ef78f2e7672daa90900cb4f38ad0b6" }
+pldm = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "be058dc5cd737799a419f7edd0e2635aae990948" }
+pldm-file = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "be058dc5cd737799a419f7edd0e2635aae990948" }
+pldm-platform = { git = "https://github.com/CodeConstruct/mctp-rs", rev = "be058dc5cd737799a419f7edd0e2635aae990948" }
 
 [features]
 default = ["log-usbserial", "nvme-mi", "pldm-file"]
