@@ -79,7 +79,7 @@ pub async fn log_usbserial_task(
             }
         }
         // cdc acm zero length packet
-        if b.len() % 64 == 0 {
+        if b.len().is_multiple_of(64) {
             sender.write_packet(&[]).await.map_err(|_| ())?;
         }
         Ok(())
