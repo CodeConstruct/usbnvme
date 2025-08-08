@@ -221,6 +221,15 @@ SECTIONS
     *(.sram3 .sram3.*);
     . = ALIGN(4); /* 4-byte align the end (VMA) of this section */
   } > SRAM3
+
+  /* ## SRAM uninit data. Doesn't have ECC. */
+  .sram2_uninit (NOLOAD) : ALIGN(4)
+  {
+    . = ALIGN(4);
+
+    *(.sram2_uninit .sram2_uninit.*);
+    . = ALIGN(4); /* 4-byte align the end (VMA) of this section */
+  } > SRAM2
 }
 
 /* Do not exceed this mark in the error messages below                                    | */

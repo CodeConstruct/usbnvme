@@ -5,7 +5,8 @@
 #![allow(clippy::collapsible_if)]
 use core::cell::Cell;
 use core::fmt::Write;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::mem::MaybeUninit;
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use log::{Log, Metadata, Record};
 use rtt_target::{rprintln, rtt_init_print};
@@ -14,6 +15,7 @@ pub use embassy_sync::blocking_mutex::Mutex as BlockingMutex;
 pub use embassy_sync::channel::Channel;
 
 use heapless::String;
+use static_cell::StaticCell;
 
 use crate::now;
 
@@ -28,7 +30,10 @@ pub const SERIAL_BACKLOG: usize = 50;
 pub type RawMutex = embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 type Line = String<MAX_LINE>;
 
-static LOGGER: MultiLog = MultiLog::new();
+// sram2 is not zeroed at boot, so need MaybeUninit.
+#[link_section = ".sram2_uninit"]
+static mut LOGGER: MaybeUninit<StaticCell<MultiLog>> = MaybeUninit::uninit();
+static LOGGER_INIT: AtomicBool = AtomicBool::new(false);
 
 #[allow(dead_code)]
 type UsbSerialSender = embassy_usb::class::cdc_acm::Sender<
@@ -36,10 +41,18 @@ type UsbSerialSender = embassy_usb::class::cdc_acm::Sender<
     embassy_stm32::usb::Driver<'static, embassy_stm32::peripherals::USB_OTG_HS>,
 >;
 
-pub fn init() {
-    LOGGER.start();
-    log::set_logger(&LOGGER).unwrap();
+pub fn init() -> &'static MultiLog {
+    if LOGGER_INIT.fetch_or(true, Ordering::SeqCst) {
+        panic!("init twice");
+    }
+    // Safety: will only be written once, no shared references.
+    #[allow(static_mut_refs)]
+    let logger = unsafe { LOGGER.write(StaticCell::new()) };
+    let logger = logger.init_with(MultiLog::new);
+    logger.start();
+    log::set_logger(logger).unwrap();
     log::set_max_level(log::LevelFilter::Trace);
+    logger
 }
 
 /// Configure suitable for reporting a panic.
@@ -50,7 +63,10 @@ pub fn enter_panic() {
 }
 
 #[embassy_executor::task]
-pub async fn log_usbserial_task(mut sender: UsbSerialSender) {
+pub async fn log_usbserial_task(
+    mut sender: UsbSerialSender,
+    logger: &'static MultiLog,
+) {
     /// Writes a buffer in cdc sized chunks
     async fn write_cdc(
         sender: &mut UsbSerialSender,
@@ -74,7 +90,7 @@ pub async fn log_usbserial_task(mut sender: UsbSerialSender) {
         sender.wait_connection().await;
         // inner loop writing log lines while connected
         'connected: loop {
-            let s = LOGGER.serial_backlog.receive().await;
+            let s = logger.serial_backlog.receive().await;
             if write_cdc(&mut sender, s.as_bytes()).await.is_err() {
                 break 'connected;
             }
@@ -97,7 +113,7 @@ enum LostLine {
     Warned,
 }
 
-struct MultiLog {
+pub struct MultiLog {
     serial_backlog: Channel<RawMutex, Line, SERIAL_BACKLOG>,
     serial_lost_lines: BlockingMutex<RawMutex, Cell<LostLine>>,
     msp_top: AtomicU32,

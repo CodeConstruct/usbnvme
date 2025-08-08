@@ -15,7 +15,7 @@ MEMORY
     /* SRAM3 can be used for DMA */
     SRAM3 : ORIGIN = 0x24040000, LENGTH =  64K
 
-    /* non-ECC. Used by bootloader. */
+    /* non-ECC. Used by bootloader, and sram2_unit usbnvme data */
     SRAM2 : ORIGIN = 0x24020000, LENGTH =  128K
 }
 

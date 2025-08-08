@@ -6,6 +6,7 @@
 #![no_main]
 // avoid mysterious missing awaits
 #![deny(unused_must_use)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use embassy_sync::signal::Signal;
 #[allow(unused)]
@@ -63,12 +64,12 @@ static EXECUTOR_LOW: StaticCell<Executor> = StaticCell::new();
 // UART5 and 4 are unused, so their interrupts are taken for the executors.
 #[interrupt]
 unsafe fn UART5() {
-    EXECUTOR_HIGH.on_interrupt()
+    unsafe { EXECUTOR_HIGH.on_interrupt() }
 }
 
 #[interrupt]
 unsafe fn UART4() {
-    EXECUTOR_MEDIUM.on_interrupt()
+    unsafe { EXECUTOR_MEDIUM.on_interrupt() }
 }
 
 fn config() -> Config {
@@ -161,13 +162,13 @@ pub const PRODUCT: &str = concat!(
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    multilog::init();
+    let logger = multilog::init();
     info!("{}. device {}", PRODUCT, device_uuid().hyphenated());
     debug!("debug log enabled");
     trace!("trace log enabled");
 
     let executor = EXECUTOR_LOW.init(Executor::new());
-    executor.run(run)
+    executor.run(|spawner| run(spawner, logger))
 }
 
 fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
@@ -199,7 +200,7 @@ fn setup_mctp() -> (&'static mut Router<'static>, PortBottom<'static>) {
 
 type SignalCS<T> = embassy_sync::signal::Signal<CriticalSectionRawMutex, T>;
 
-fn run(low_spawner: Spawner) {
+fn run(low_spawner: Spawner, logger: &'static multilog::MultiLog) {
     // Highest priority goes to the USB send task, to fill the TX buffer
     // as quickly as possible once it becomes ready.
     //
@@ -272,10 +273,11 @@ fn run(low_spawner: Spawner) {
         let bench = bench_task(router, &BENCH_REQUEST);
         low_spawner.must_spawn(bench);
     }
+    let _ = logger;
     #[cfg(feature = "log-usbserial")]
     {
         let (sender, _) = usbserial.split();
-        let seriallog = multilog::log_usbserial_task(sender);
+        let seriallog = multilog::log_usbserial_task(sender, logger);
         low_spawner.must_spawn(seriallog);
     }
 }
