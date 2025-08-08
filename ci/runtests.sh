@@ -30,7 +30,6 @@ cargo build --release --all-features
 cargo doc
 
 # Record sizes
-cargo size --release
-readelf -S target/thumbv7em-none-eabihf/release/usbnvme
+readelf -S "$CARGO_TARGET_DIR"/thumbv7em-none-eabihf/release/usbnvme
 
 echo success

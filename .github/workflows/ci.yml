@@ -36,7 +36,7 @@ jobs:
             rust-${{ matrix.rust_version }}
 
       - name: Rustup ${{ matrix.rust_version }}
-        if: ${{ matrix.rust_version}} != "no_override"
+        if: ${{ matrix.rust_version != 'no_override' }}
         run: |
           rustup override set ${{ matrix.rust_version }}
 
