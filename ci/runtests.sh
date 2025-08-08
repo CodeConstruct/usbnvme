@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -v
+set -e
+
+export CARGO_TARGET_DIR=target/ci
+
+rustup target add thumbv7em-none-eabihf
+rustup component add rustfmt clippy
+
+export RUSTDOCFLAGS='-D warnings'
+export RUSTFLAGS="-D warnings"
+
+cargo fmt -- --check
+
+# Check everything first
+cargo check --locked
+cargo clippy
+
+# various features
+cargo build
+cargo build --all-features
+cargo build --no-default-features
+cargo build --features mctp-bench
+
+# release builds
+cargo build --release --all-features
+
+# Check syntax
+cargo doc
+
+# Record sizes
+cargo size --release
+readelf -S target/thumbv7em-none-eabihf/release/usbnvme
+
+echo success
