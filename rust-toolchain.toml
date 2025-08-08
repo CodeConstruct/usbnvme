@@ -1,4 +1,4 @@
 [toolchain]
 components = [ "llvm-tools" ]
-channel = "1.88"
+channel = "1.89"
 targets = [ "thumbv7em-none-eabihf" ]
