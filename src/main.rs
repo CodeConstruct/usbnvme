@@ -431,7 +431,7 @@ async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
 /// A mctp-bench sender.
 ///
 /// Use with `mctp-bench` test tool from
-/// https://github.com/CodeConstruct/mctp. Asssumes receiver EID 90.
+/// <https://github.com/CodeConstruct/mctp>
 #[allow(unused)]
 #[embassy_executor::task]
 async fn bench_task(
