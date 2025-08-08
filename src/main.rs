@@ -4,6 +4,8 @@
  */
 #![no_std]
 #![no_main]
+// avoid mysterious missing awaits
+#![deny(unused_must_use)]
 
 use embassy_sync::signal::Signal;
 #[allow(unused)]

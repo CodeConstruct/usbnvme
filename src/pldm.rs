@@ -189,7 +189,8 @@ async fn pldm_run_file(
             PLDM_TYPE_CONTROL,
             PLDM_BASE_VERSION,
             &required,
-        );
+        )
+        .await;
 
         // Get Commands type 7
         let required = [
@@ -202,7 +203,8 @@ async fn pldm_run_file(
             PLDM_TYPE_FILE_TRANSFER,
             PLDM_FILE_VERSION,
             &required,
-        );
+        )
+        .await;
 
         // PDR Repository Info
         let pdr_info = platrq::get_pdr_repository_info(comm)
