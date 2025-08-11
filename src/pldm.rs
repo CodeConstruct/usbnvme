@@ -117,7 +117,7 @@ async fn check_commands(
             info!("PLDM type {pldm_type} commands: {cmds:#02x?}");
             for c in required_commands {
                 if !cmds.contains(c) {
-                    warn!("Required command {c:#02x} missing");
+                    warn!("Required type {pldm_type} command {c:#02x} missing");
                 }
             }
         }
