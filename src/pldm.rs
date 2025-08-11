@@ -8,6 +8,9 @@
 use log::{debug, error, info, trace, warn};
 
 use core::future::Future;
+use core::mem::MaybeUninit;
+
+use static_cell::StaticCell;
 
 use pldm_file::PLDM_TYPE_FILE_TRANSFER;
 use pldm_platform::proto::PdrRecord;
@@ -44,6 +47,13 @@ pub trait PldmTimeout: Future + Sized {
 
 impl<F: Future> PldmTimeout for F {}
 
+// Limited by MCTP message size, must be power of two
+const PART_SIZE: usize = 4096;
+// sram2 is not zeroed at boot, so need MaybeUninit.
+#[link_section = ".sram2_uninit"]
+static mut PART_BUF: MaybeUninit<StaticCell<[u8; PART_SIZE + 18]>> =
+    MaybeUninit::uninit();
+
 #[embassy_executor::task]
 pub(crate) async fn pldm_file_task(
     router: &'static Router<'static>,
@@ -52,8 +62,12 @@ pub(crate) async fn pldm_file_task(
 ) -> ! {
     info!("PLDM file task started");
 
-    let mut host = None;
+    // Safety: will only be written once, no shared references.
+    #[allow(static_mut_refs)]
+    let part_buf = unsafe { PART_BUF.write(StaticCell::new()) };
+    let part_buf = part_buf.init_with(|| [0u8; _]);
 
+    let mut host = None;
     loop {
         let target = match host.take() {
             Some(t) => t,
@@ -63,7 +77,8 @@ pub(crate) async fn pldm_file_task(
         info!("Running PLDM file transfer from {target}");
 
         let run = async {
-            if let Err(e) = pldm_run_file(target, router, hash).await {
+            if let Err(e) = pldm_run_file(target, router, hash, part_buf).await
+            {
                 warn!("Error running file transfer: {e}");
             }
         };
@@ -143,6 +158,7 @@ async fn pldm_run_file(
     eid: Eid,
     router: &'static Router<'static>,
     hash: &'static SharedHash,
+    part_buf: &mut [u8],
 ) -> Result<(), PldmError> {
     use pldm_file::client::*;
     use pldm_file::proto::*;
@@ -242,7 +258,10 @@ async fn pldm_run_file(
         // NegotiateTransferParameters
         let req_types = [pldm_file::PLDM_TYPE_FILE_TRANSFER];
         let (size, neg_types) = ctrq::negotiate_transfer_parameters(
-            comm, &req_types, &mut buf, 1024,
+            comm,
+            &req_types,
+            &mut buf,
+            PART_SIZE as u16,
         )
         .await
         .inspect_err(|e| warn!("Error from Negotiate: {e}"))?;
@@ -275,11 +294,18 @@ async fn pldm_run_file(
         None,
     );
     let mut count = 0;
-    df_read_with(comm, fd, 0, filedesc.file_max_size as usize, |b| {
-        count += b.len();
-        hash.update_blocking(&mut hash_ctx, b);
-        Ok(())
-    })
+    df_read_with(
+        comm,
+        fd,
+        0,
+        filedesc.file_max_size as usize,
+        part_buf,
+        |b| {
+            count += b.len();
+            hash.update_blocking(&mut hash_ctx, b);
+            Ok(())
+        },
+    )
     .with_timeout(READ_TIMEOUT)
     .await?
     .inspect_err(|e| warn!("df_read failed {e}"))?;
