@@ -9,11 +9,10 @@ use log::{debug, error, info, trace, warn};
 
 use core::future::Future;
 
-use sha2::{Digest, Sha256};
-
 use pldm_file::PLDM_TYPE_FILE_TRANSFER;
 use pldm_platform::proto::PdrRecord;
 
+use crate::SharedHash;
 use embassy_futures::select::select;
 use embassy_time::Duration;
 use mctp::{AsyncReqChannel, Eid};
@@ -49,6 +48,7 @@ impl<F: Future> PldmTimeout for F {}
 pub(crate) async fn pldm_file_task(
     router: &'static Router<'static>,
     peer: &'static SignalCS<Eid>,
+    hash: &'static SharedHash,
 ) -> ! {
     info!("PLDM file task started");
 
@@ -63,7 +63,7 @@ pub(crate) async fn pldm_file_task(
         info!("Running PLDM file transfer from {target}");
 
         let run = async {
-            if let Err(e) = pldm_run_file(target, router).await {
+            if let Err(e) = pldm_run_file(target, router, hash).await {
                 warn!("Error running file transfer: {e}");
             }
         };
@@ -142,6 +142,7 @@ impl core::fmt::Display for Hex<'_> {
 async fn pldm_run_file(
     eid: Eid,
     router: &'static Router<'static>,
+    hash: &'static SharedHash,
 ) -> Result<(), PldmError> {
     use pldm_file::client::*;
     use pldm_file::proto::*;
@@ -267,11 +268,16 @@ async fn pldm_run_file(
     info!("Reading entire file ({} bytes)...", filedesc.file_max_size);
     let start = embassy_time::Instant::now();
 
-    let mut hash = Sha256::new();
+    let mut hash = hash.lock().await;
+    let mut hash_ctx = hash.start(
+        embassy_stm32::hash::Algorithm::SHA256,
+        embassy_stm32::hash::DataType::Width8,
+        None,
+    );
     let mut count = 0;
     df_read_with(comm, fd, 0, filedesc.file_max_size as usize, |b| {
         count += b.len();
-        hash.update(b);
+        hash.update_blocking(&mut hash_ctx, b);
         Ok(())
     })
     .with_timeout(READ_TIMEOUT)
@@ -280,8 +286,10 @@ async fn pldm_run_file(
 
     let time = start.elapsed().as_millis() as usize;
     let kbyte_rate = count / time;
+    let mut digest = [0u8; 32];
+    hash.finish_blocking(hash_ctx, &mut digest);
     info!("Transfer complete. total {count} bytes, {time} ms, {kbyte_rate} kB/s, sha256 {}",
-        Hex(&hash.finalize()));
+        Hex(&digest));
 
     // File Close
     let attrs = DfCloseAttributes::empty();

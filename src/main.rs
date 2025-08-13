@@ -8,7 +8,6 @@
 #![deny(unused_must_use)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use embassy_sync::signal::Signal;
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
@@ -19,10 +18,12 @@ use embassy_executor::{Executor, InterruptExecutor, Spawner};
 use embassy_futures::select::{select, Either};
 use embassy_stm32::interrupt;
 use embassy_stm32::interrupt::{InterruptExt, Priority};
-use embassy_stm32::{gpio, Config};
+use embassy_stm32::{bind_interrupts, gpio, mode, peripherals, Config};
 use embassy_time::{Duration, Instant, Timer};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::mutex::Mutex;
+use embassy_sync::signal::Signal;
 use mctp::{AsyncListener, AsyncRespChannel};
 use mctp::{Eid, MsgType};
 use mctp_estack::control::ControlEvent;
@@ -36,6 +37,10 @@ mod stmutil;
 mod usb;
 
 use ccvendor::BenchRequest;
+
+bind_interrupts!(struct Irqs {
+    HASH => embassy_stm32::hash::InterruptHandler<peripherals::HASH>;
+});
 
 const USB_MTU: usize = 251;
 
@@ -54,6 +59,11 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     error!("panicked. {}", info);
     loop {}
 }
+
+type SharedHash = Mutex<
+    CriticalSectionRawMutex,
+    embassy_stm32::hash::Hash<'static, peripherals::HASH, mode::Blocking>,
+>;
 
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 static EXECUTOR_MEDIUM: InterruptExecutor = InterruptExecutor::new();
@@ -210,6 +220,12 @@ fn run(low_spawner: Spawner, logger: &'static multilog::MultiLog) {
 
     let led = gpio::Output::new(p.PD13, gpio::Level::High, gpio::Speed::Low);
 
+    static HASH: StaticCell<SharedHash> = StaticCell::new();
+    let hash = HASH.init(Mutex::new(embassy_stm32::hash::Hash::new_blocking(
+        p.HASH, Irqs,
+    )));
+    let _ = hash;
+
     /// Notification of the remote peer.
     ///
     /// Set on each Set Endpoint ID call. Initially None.
@@ -255,7 +271,7 @@ fn run(low_spawner: Spawner, logger: &'static multilog::MultiLog) {
     }
     #[cfg(feature = "pldm-file")]
     {
-        let pldm_file = pldm::pldm_file_task(router, &PEER_NOTIFY);
+        let pldm_file = pldm::pldm_file_task(router, &PEER_NOTIFY, hash);
         medium_spawner.must_spawn(pldm_file);
     }
     #[cfg(feature = "mctp-bench")]
