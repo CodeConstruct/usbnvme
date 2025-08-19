@@ -285,7 +285,7 @@ async fn pldm_run_file(
     .inspect_err(|e| warn!("df_read failed {e}"))?;
 
     let time = start.elapsed().as_millis() as usize;
-    let kbyte_rate = count / time;
+    let kbyte_rate = count.checked_div(time).unwrap_or(0);
     let mut digest = [0u8; 32];
     hash.finish_blocking(hash_ctx, &mut digest);
     info!("Transfer complete. total {count} bytes, {time} ms, {kbyte_rate} kB/s, sha256 {}",
