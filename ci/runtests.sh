@@ -18,13 +18,12 @@ cargo check --locked
 cargo clippy
 
 # various features
-cargo build
-cargo build --all-features
-cargo build --no-default-features
-cargo build --features mctp-bench
-
-# release builds
+cargo build --release
 cargo build --release --all-features
+cargo build --release --no-default-features
+cargo build --release --features mctp-bench
+
+(cd xspiloader && cargo build)
 
 # Check syntax
 cargo doc
