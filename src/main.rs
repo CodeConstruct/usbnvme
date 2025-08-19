@@ -97,6 +97,8 @@ fn config() -> Config {
         divp: Some(PllDiv::DIV1), // 600 MHz
         divq: Some(PllDiv::DIV2), // 300 MHz
         divr: Some(PllDiv::DIV2), // 300 MHz
+        divs: None,
+        divt: None,
     });
     config.rcc.pll3 = Some(Pll {
         source: PllSource::HSI,
@@ -106,6 +108,8 @@ fn config() -> Config {
         // 32MHz max for Usbphycsel
         divq: Some(PllDiv::DIV10), // 32 MHz
         divr: Some(PllDiv::DIV10), // 32 MHz
+        divs: None,
+        divt: None,
     });
     config.rcc.sys = Sysclk::PLL1_P; // 600 MHz
     config.rcc.ahb_pre = AHBPrescaler::DIV2; // 300 MHz
