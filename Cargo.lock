@@ -213,9 +213,9 @@ dependencies = [
 [[package]]
 name = "deku"
 version = "0.19.1"
-source = "git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6#e1e2eb703ea7f8d68fb7ff01140ca16e021cb11c"
+source = "git+https://github.com/sharksforarms/deku.git?rev=e5363bc11e123bfcfd3467a2a90aeef8b588f432#e5363bc11e123bfcfd3467a2a90aeef8b588f432"
 dependencies = [
- "deku_derive 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6)",
+ "deku_derive 0.19.1 (git+https://github.com/sharksforarms/deku.git?rev=e5363bc11e123bfcfd3467a2a90aeef8b588f432)",
  "no_std_io2",
  "rustversion",
 ]
@@ -234,7 +234,7 @@ dependencies = [
 [[package]]
 name = "deku_derive"
 version = "0.19.1"
-source = "git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6#e1e2eb703ea7f8d68fb7ff01140ca16e021cb11c"
+source = "git+https://github.com/sharksforarms/deku.git?rev=e5363bc11e123bfcfd3467a2a90aeef8b588f432#e5363bc11e123bfcfd3467a2a90aeef8b588f432"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -774,10 +774,10 @@ dependencies = [
 [[package]]
 name = "nvme-mi-dev"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/nvme-mi-dev#6182fd25b196681898d05e644388f17d005adcbc"
+source = "git+https://github.com/CodeConstruct/nvme-mi-dev#6dc246aae5fdc46d655b6e0b8126ec34546152d9"
 dependencies = [
  "crc",
- "deku 0.19.1 (git+https://github.com/CodeConstruct/deku.git?tag=cc%2Fdeku-v0.19.1%2Fno-alloc-6)",
+ "deku 0.19.1 (git+https://github.com/sharksforarms/deku.git?rev=e5363bc11e123bfcfd3467a2a90aeef8b588f432)",
  "flagset",
  "heapless",
  "hmac",
