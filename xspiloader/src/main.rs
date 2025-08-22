@@ -247,27 +247,25 @@ async fn load_elf(
         };
 
         // Attempt to load PT_LOAD segments
-        if ph.p_type() == neotron_loader::ProgramHeader::PT_LOAD {
+        if ph.p_type() == neotron_loader::ProgramHeader::PT_LOAD
+            && ph.p_filesz() > 0
+        {
             info!(
                 "loading 0x{:x} len 0x{:x} from 0x{:x}",
                 ph.p_paddr(),
-                ph.p_memsz(),
+                ph.p_filesz(),
                 ph.p_offset()
             );
             // Flush in case it faults
             log::logger().flush();
 
-            if !valid_dest(ph.p_paddr(), ph.p_memsz()) {
+            if !valid_dest(ph.p_paddr(), ph.p_filesz()) {
                 error!("Invalid dest");
                 return Err(());
             }
 
-            if ph.p_memsz() == 0 {
-                continue;
-            }
-
             let (foff, addr, sz) = if ph.p_paddr() != 0 {
-                (ph.p_offset(), ph.p_paddr(), ph.p_memsz())
+                (ph.p_offset(), ph.p_paddr(), ph.p_filesz())
             } else {
                 // Rust disallows NULL pointers, which is unfortunate given
                 // 0x0 is the start of ITCM where reset vectors can go.
@@ -288,7 +286,7 @@ async fn load_elf(
                     );
                 }
 
-                (ph.p_offset() + 1, ph.p_paddr() + 1, ph.p_memsz() - 1)
+                (ph.p_offset() + 1, ph.p_paddr() + 1, ph.p_filesz() - 1)
             };
 
             let dest = (addr as usize) as *mut u8;
