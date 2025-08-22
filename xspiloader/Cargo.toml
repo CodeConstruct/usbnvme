@@ -17,4 +17,6 @@ cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }
 panic-probe = { workspace = true }
 
-neotron-loader = "0.1.0"
+# Required for ELF payloads build with Rust 1.89
+# https://github.com/Neotron-Compute/neotron-loader/pull/2
+neotron-loader = { git = "https://github.com/Neotron-Compute/neotron-loader", rev = "ab92cecd8a458044aef30b39c87112244deb69c6" }

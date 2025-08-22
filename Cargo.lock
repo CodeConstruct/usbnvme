@@ -739,8 +739,7 @@ checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
 [[package]]
 name = "neotron-loader"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9b8634a088b9d5b338a96b3f6ef45a3bc0b9c0f0d562c7d00e498265fd96e8f"
+source = "git+https://github.com/Neotron-Compute/neotron-loader?rev=ab92cecd8a458044aef30b39c87112244deb69c6#ab92cecd8a458044aef30b39c87112244deb69c6"
 
 [[package]]
 name = "no_std_io2"
