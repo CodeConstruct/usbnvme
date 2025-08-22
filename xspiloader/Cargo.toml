@@ -17,4 +17,4 @@ cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }
 panic-probe = { workspace = true }
 
-neotron-loader = "0.1.0"
+neotron-loader = { git = "https://github.com/mkj/neotron-loader", branch = "pr/elf-os" }
