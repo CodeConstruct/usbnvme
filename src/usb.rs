@@ -94,7 +94,7 @@ pub(crate) fn setup(
     let ret = (mctp,);
 
     let usb = builder.build();
-    spawner.must_spawn(usb_task(usb, state_notify));
+    spawner.spawn(usb_task(usb, state_notify).unwrap());
 
     ret
 }

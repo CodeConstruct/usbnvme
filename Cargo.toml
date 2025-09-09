@@ -14,7 +14,7 @@ embassy-sync = { version = "0.7" }
 embassy-usb = { version = "0.5", default-features = false }
 embassy-usb-driver = { version = "0.2" }
 embassy-futures = { version = "0.1" }
-embassy-time = "0.4"
+embassy-time = "0.5"
 log = "0.4"
 rtt-target = "0.6"
 heapless = "0.8"
@@ -23,8 +23,8 @@ cortex-m = { version = "0.7.6", features = ["inline-asm", "critical-section-sing
 # set-vtor and set-sp necessary when using xspiloader
 cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
 panic-probe = { version = "1", features = ["print-rtt"] }
-embassy-executor = { version = "0.8", features = ["executor-thread"] }
-embassy-stm32 = { version = "0.3", features = ["time-driver-any", "stm32h7s3l8", "unstable-pac", "log"] }
+embassy-executor = { version = "0.9", features = ["executor-thread"] }
+embassy-stm32 = { version = "0.4", features = ["time-driver-any", "stm32h7s3l8", "unstable-pac", "log"] }
 
 [dependencies]
 embassy-executor = { workspace = true, features = [
@@ -63,15 +63,19 @@ num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
 [patch.crates-io]
+# Patches since releases:
 # "Fix vrefbuf trace with log" https://github.com/embassy-rs/embassy/pull/4553
-embassy-stm32 = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
-embassy-usb-synopsys-otg = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
+# "otg: Use chunks_exact for more efficient rx copy" https://github.com/embassy-rs/embassy/pull/4566
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-usb-synopsys-otg = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
 
-embassy-time = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
-embassy-time-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
-embassy-usb = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
-embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
-embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "a5cb04bdab602bc3bd056d254a9d61cad55bd967" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-time-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
+embassy-futures = { git = "https://github.com/embassy-rs/embassy/", rev = "25e0ebf5206fa2e2906f5826c0b1587739f628d8" }
 
 
 # Updated for embassy-usb api change

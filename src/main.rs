@@ -253,44 +253,47 @@ fn run(low_spawner: Spawner, logger: &'static multilog::MultiLog) {
 
     let (usb_sender, usb_receiver) = mctpusb.split();
 
-    let echo = echo_task(router, &BENCH_REQUEST);
-    let timeout = timeout_task(router);
-    let control = control_task(router, &CONTROL_NOTIFY);
-    let usb_send_loop = usb::usb_send_task(mctp_usb_bottom, usb_sender);
+    let echo = echo_task(router, &BENCH_REQUEST).unwrap();
+    let timeout = timeout_task(router).unwrap();
+    let control = control_task(router, &CONTROL_NOTIFY).unwrap();
+    let usb_send_loop =
+        usb::usb_send_task(mctp_usb_bottom, usb_sender).unwrap();
     let usb_recv_loop =
-        usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX);
-    let app_loop = usbnvme_app_task(&USB_NOTIFY, &CONTROL_NOTIFY, &PEER_NOTIFY);
+        usb::usb_recv_task(router, usb_receiver, Routes::USB_INDEX).unwrap();
+    let app_loop =
+        usbnvme_app_task(&USB_NOTIFY, &CONTROL_NOTIFY, &PEER_NOTIFY).unwrap();
 
-    low_spawner.must_spawn(blink_task(led));
-    medium_spawner.must_spawn(echo);
-    medium_spawner.must_spawn(timeout);
-    medium_spawner.must_spawn(usb_recv_loop);
-    medium_spawner.must_spawn(control);
-    medium_spawner.must_spawn(app_loop);
+    low_spawner.spawn(blink_task(led).unwrap());
+    medium_spawner.spawn(echo);
+    medium_spawner.spawn(timeout);
+    medium_spawner.spawn(usb_recv_loop);
+    medium_spawner.spawn(control);
+    medium_spawner.spawn(app_loop);
     // high priority for usb send
-    high_spawner.must_spawn(usb_send_loop);
+    high_spawner.spawn(usb_send_loop);
 
     #[cfg(feature = "nvme-mi")]
     {
-        let nvmemi = nvme_mi_task(router);
-        medium_spawner.must_spawn(nvmemi);
+        let nvmemi = nvme_mi_task(router).unwrap();
+        medium_spawner.spawn(nvmemi);
     }
     #[cfg(feature = "pldm-file")]
     {
-        let pldm_file = pldm::pldm_file_task(router, &PEER_NOTIFY, hash);
-        medium_spawner.must_spawn(pldm_file);
+        let pldm_file =
+            pldm::pldm_file_task(router, &PEER_NOTIFY, hash).unwrap();
+        medium_spawner.spawn(pldm_file);
     }
     #[cfg(feature = "mctp-bench")]
     {
-        let bench = bench_task(router, &BENCH_REQUEST);
-        low_spawner.must_spawn(bench);
+        let bench = bench_task(router, &BENCH_REQUEST).unwrap();
+        low_spawner.spawn(bench);
     }
     let _ = logger;
     #[cfg(feature = "log-usbserial")]
     {
         let (sender, _) = usbserial.split();
-        let seriallog = multilog::log_usbserial_task(sender, logger);
-        low_spawner.must_spawn(seriallog);
+        let seriallog = multilog::log_usbserial_task(sender, logger).unwrap();
+        low_spawner.spawn(seriallog);
     }
 }
 
