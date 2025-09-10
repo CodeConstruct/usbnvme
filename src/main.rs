@@ -11,6 +11,8 @@
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
+use core::mem::MaybeUninit;
+
 use heapless::Vec;
 use static_cell::StaticCell;
 
@@ -454,8 +456,12 @@ async fn bench_task(
 ) -> ! {
     debug!("mctp-bench send running");
 
-    static BUF: StaticCell<[u8; BENCH_LEN]> = StaticCell::new();
-    let buf = BUF.init_with(|| [0u8; BENCH_LEN]);
+    #[link_section = ".sram2_uninit"]
+    static mut BUF: MaybeUninit<StaticCell<[u8; BENCH_LEN]>> =
+        MaybeUninit::uninit();
+    #[allow(static_mut_refs)]
+    let buf = unsafe { BUF.write(StaticCell::new()) };
+    let buf = buf.init_with(|| [0u8; _]);
 
     let mut bench = ccvendor::MctpBench::new(buf).unwrap();
 
