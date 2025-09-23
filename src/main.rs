@@ -402,7 +402,6 @@ async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
     let mut subsys = Subsystem::new(SubsystemInfo::environment());
     let ppid = subsys.add_port(PortType::Pcie(PciePort::new())).unwrap();
     let ctrlid0 = subsys.add_controller(ppid).unwrap();
-    let _ctrlid1 = subsys.add_controller(ppid).unwrap();
 
     let size_blocks = 10_000_000_000_000_u64.div_ceil(512);
     let nsid = subsys.add_namespace(size_blocks).unwrap();
