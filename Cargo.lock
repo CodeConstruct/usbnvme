@@ -759,7 +759,7 @@ dependencies = [
 [[package]]
 name = "nvme-mi-dev"
 version = "0.1.0"
-source = "git+https://github.com/CodeConstruct/nvme-mi-dev#b6614f2651dc46df5e7798c133a43669cebfee70"
+source = "git+https://github.com/CodeConstruct/nvme-mi-dev#4deccf75405cb91e6bd2f020d3a0e0afa126ea6c"
 dependencies = [
  "crc",
  "deku 0.19.1 (git+https://github.com/sharksforarms/deku.git?rev=e5363bc11e123bfcfd3467a2a90aeef8b588f432)",
