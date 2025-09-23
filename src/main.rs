@@ -428,19 +428,29 @@ async fn nvme_mi_task(router: &'static Router<'static>) -> ! {
         debug!("Handling NVMe-MI message: {msg:x?}");
         mep.handle_async(&mut subsys, msg, ic, resp, async |cmd| match cmd {
             CommandEffect::SetMtu { port_id, mtus } => {
-                if port_id == ppid {
+                if port_id != twpid {
+                    warn!("NVMe-MI: Set MTU bad Port ID {port_id:?}");
+                    return Err(CommandEffectError::InternalError);
+                }
+                if mtus != 64 {
                     // TODO: implement once PortLookup::by_eid trait takes a
                     // non-mut reference.
-                    warn!("NVMe-MI: Set MTU Port ID {port_id:?} MTU {mtus}, not currently handled");
-                    Err(CommandEffectError::Unsupported)
-                } else {
-                    warn!("NVMe-MI: Set MTU bad Port ID {port_id:?}");
-                    Err(CommandEffectError::InternalError)
+                    warn!("NVMe-MI: Application lacks support for MTU ({mtus}) != BTU (64)");
+                    return Err(CommandEffectError::Unsupported);
                 }
+
+                Ok(())
             }
-            CommandEffect::SetSmbusFreq { .. } => {
-                info!("NVMe-MI: Ignoring Set SMBUS Frequency");
-                Err(CommandEffectError::Unsupported)
+            CommandEffect::SetSmbusFreq { port_id: _, freq } => {
+                use nvme_mi_dev::nvme::mi::SmbusFrequency;
+
+                if freq != SmbusFrequency::Freq100Khz {
+                    warn!("NVMe-MI: Application lacks support for I2C bus frequency {:?}", freq);
+                    return Err(CommandEffectError::Unsupported)
+                }
+
+                // Not an error to ignore SMBus frequency when we're using USB
+                Ok(())
             }
         })
         .await;
