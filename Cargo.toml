@@ -24,7 +24,7 @@ cortex-m = { version = "0.7.6", features = ["inline-asm", "critical-section-sing
 cortex-m-rt = { version = "0.7.0", features = ["set-sp", "set-vtor"] }
 panic-probe = { version = "1", features = ["print-rtt"] }
 embassy-executor = { version = "0.9", features = ["executor-thread"] }
-embassy-stm32 = { version = "0.4", features = ["time-driver-any", "stm32h7s3l8", "unstable-pac", "log"] }
+embassy-stm32 = { version = "0.4", features = ["stm32h7s3l8", "unstable-pac", "log"] }
 
 [dependencies]
 embassy-executor = { workspace = true, features = [
@@ -35,7 +35,7 @@ embassy-sync = { workspace = true }
 embassy-usb = { workspace = true }
 embassy-usb-driver = { workspace = true }
 embassy-futures = { workspace = true }
-embassy-stm32 = { workspace = true }
+embassy-stm32 = { workspace = true, features = ["time-driver-any"] }
 embassy-usb-synopsys-otg = { version = "0.3" }
 embedded-hal-async = { workspace = true }
 heapless = { workspace = true }
