@@ -164,8 +164,8 @@ fn set_tcm_split(itcm: TCMSplit, dtcm: TCMSplit) {
 
     // set the split in option bytes
     pac::FLASH.obw2srp().modify(|r| {
-        r.set_itcm_axi_share(itcm as u8);
-        r.set_dtcm_axi_share(dtcm as u8);
+        r.set_itcm_axi_share(itcm);
+        r.set_dtcm_axi_share(dtcm);
     });
 
     // wait
